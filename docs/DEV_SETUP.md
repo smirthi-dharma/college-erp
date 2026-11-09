@@ -37,3 +37,16 @@ Environment variables: `DATABASE_URL`, `DJANGO_SECRET_KEY` (always required, no 
 `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `FCM_SERVER_KEY`,
 `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `AUDIT_CLIENT_IP_HEADER` (only behind a proxy you control).
 With `DJANGO_DEBUG=0` run `collectstatic` first, set the reCAPTCHA keys, and list real hosts in `DJANGO_ALLOWED_HOSTS`.
+
+
+## Django admin (platform staff only)
+
+Set `PLATFORM_ADMIN_EMAILS=you@yourcompany.in` in `.env`, then for each college:
+
+```bash
+python manage.py migrate_schemas
+python manage.py create_platform_admin demo you@yourcompany.in
+```
+
+Add the printed `otpauth://` link to an authenticator app, then sign in at `http://demo.localhost:8000/platform-admin/`
+with your password and the 6-digit code.

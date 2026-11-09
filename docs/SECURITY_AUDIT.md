@@ -65,6 +65,19 @@ no entry; a failure to log stops the change). Design choices:
    arrive with the departments model.
 9. Not covered by tests yet: Celery jobs, caches and backups (they do not exist yet).
 
+## Django admin: platform staff only, with 2FA (2026-11-09)
+
+Before: `/admin/` was open to any account flagged `is_staff` in a college, with password-only login, and the
+`CustomUser` admin page crashed (it still listed a removed `username` field; fixed).
+Now (`college_management_system/admin_site.py`) an admin page needs ALL of: active staff superuser, e-mail listed in
+`PLATFORM_ADMIN_EMAILS` (environment; empty = admin locked for everyone), and a TOTP code at login (django-otp: codes are
+single-use and failed codes are throttled). College users, even if flagged superuser, never qualify. The admin moved from
+`/admin/` to `/platform-admin/` (`DJANGO_ADMIN_URL` to change it). Platform admins live inside each college's schema
+(a login in one college is useless in another); create one with
+`python manage.py create_platform_admin <schema> <email>` (`--reset-2fa` after a lost phone). The secret is shown once.
+Admin edits go through the ORM, so the audit log records them with the admin as the actor (tested for edit and delete).
+Open: no recovery codes yet (reset by command); admin pages for the `academics` models are registered after that app merges.
+
 ## Rules for new code
 
 - Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails.
