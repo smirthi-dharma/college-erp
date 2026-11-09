@@ -24,11 +24,17 @@ _HOME = {COLLEGE_ADMIN: 'admin_home', STAFF: 'staff_home', STUDENT: 'student_hom
 
 
 def home_url_for(user):
-    return reverse(_HOME.get(user.user_type, 'login_page'))
+    """The user's landing page, or None for a role that has no pages yet (Head of department)."""
+    name = _HOME.get(user.user_type)
+    return reverse(name) if name else None
 
 
-def role_required(*roles):
-    """Allow only authenticated users whose role is in ``roles``."""
+def role_required(*roles, strict=False):
+    """Allow only authenticated users whose role is in ``roles``.
+
+    A logged-in user with another role is sent to their own home page, or gets HTTP 403 when ``strict`` is set
+    (and always when their role has no home page yet).
+    """
     allowed = frozenset(roles)
 
     def decorator(view):
@@ -38,7 +44,10 @@ def role_required(*roles):
             if not user.is_authenticated:
                 return redirect(reverse('login_page'))
             if user.user_type not in allowed:
-                return redirect(home_url_for(user))
+                home = home_url_for(user)
+                if strict or home is None:
+                    raise PermissionDenied('Your role may not use this page.')
+                return redirect(home)
             return view(request, *args, **kwargs)
 
         wrapper.allowed_roles = allowed

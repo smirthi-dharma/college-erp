@@ -52,6 +52,14 @@
             </a>
         </div>
 
+        <div class="nav-item">
+            {% url 'import_home' as import_home %}
+            <a href="{{ import_home }}" class="nav-link {% if 'import' in request.path %}active{% endif %}">
+                <i class="nav-icon fas fa-file-excel"></i>
+                <span class="nav-text">Bulk import</span>
+            </a>
+        </div>
+
         <h6 class="nav-section-title">User Management</h6>
         
         <div class="nav-item">

@@ -21,7 +21,9 @@
                                     <th>Full Name</th>
                                     <th>Email</th>
                                     <th>Gender</th>
-                                    <th>Course</th>
+                                    <th>Employee ID</th>
+                                    <th>Phone</th>
+                                    <th>Department</th>
                                     <th>Avatar</th>
                                     <th>Actions</th>
                                 </tr>
@@ -33,7 +35,9 @@
                                     <td>{{staff.last_name}}, {{staff.first_name}}</td>
                                     <td>{{staff.email}}</td>
                                     <td>{{staff.gender}}</td>
-                                    <td>{{staff.staff.course.name}}</td>
+                                    <td>{{staff.staff.employee_id|default:"-"}}</td>
+                                    <td>{{staff.phone|default:"-"}}</td>
+                                    <td>{{staff.staff.department|default:"-"}}</td>
                                     <td>
                                         {% if staff.profile_pic == ""  %}
                                         No Image

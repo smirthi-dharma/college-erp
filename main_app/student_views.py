@@ -163,6 +163,7 @@ def student_view_profile(request):
                 admin.first_name = first_name
                 admin.last_name = last_name
                 admin.address = address
+                admin.phone = form.cleaned_data.get('phone', '')
                 admin.gender = gender
                 admin.save()
                 student.save()

@@ -69,8 +69,8 @@ class CollegeAdminRoleTests(TwoCollegeTestCase):
         with tenant_context(self.college_a), connection.cursor() as cursor:
             cursor.execute(
                 "INSERT INTO main_app_customuser (password, is_superuser, first_name, last_name, is_staff, is_active,"
-                " date_joined, email, user_type, gender, profile_pic, address, fcm_token, created_at, updated_at)"
-                " VALUES ('x', false, 'Old', 'Admin', false, true, now(), 'old@a.in', '1', 'M', '', '', '', now(), now())")
+                " date_joined, email, user_type, gender, profile_pic, address, phone, fcm_token, created_at, updated_at)"
+                " VALUES ('x', false, 'Old', 'Admin', false, true, now(), 'old@a.in', '1', 'M', '', '', '', '', now(), now())")
         from django.test import Client
 
         from colleges.tests.base import EMAIL_BACKEND, HOST_A

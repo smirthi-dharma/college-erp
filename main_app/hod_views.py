@@ -90,7 +90,9 @@ def add_staff(request):
                     email=email, password=password, user_type=2, first_name=first_name, last_name=last_name, profile_pic=passport_url)
                 user.gender = gender
                 user.address = address
+                user.phone = form.cleaned_data.get('phone', '')
                 user.staff.department = department
+                user.staff.employee_id = form.cleaned_data.get('employee_id')
                 user.save()
                 user.staff.save()
                 messages.success(request, "Successfully Added")
@@ -127,7 +129,10 @@ def add_student(request):
                     email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
                 user.gender = gender
                 user.address = address
+                user.phone = student_form.cleaned_data.get('phone', '')
                 user.student.section = section
+                user.student.roll_number = student_form.cleaned_data.get('roll_number')
+                user.student.date_of_birth = student_form.cleaned_data.get('date_of_birth')
                 user.save()
                 user.student.save()
                 messages.success(request, "Successfully Added")
@@ -195,7 +200,9 @@ def edit_staff(request, staff_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
+                user.phone = form.cleaned_data.get('phone', '')
                 staff.department = department
+                staff.employee_id = form.cleaned_data.get('employee_id')
                 user.save()
                 staff.save()
                 messages.success(request, "Successfully Updated")
@@ -243,6 +250,9 @@ def edit_student(request, student_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
+                user.phone = form.cleaned_data.get('phone', '')
+                student.roll_number = form.cleaned_data.get('roll_number')
+                student.date_of_birth = form.cleaned_data.get('date_of_birth')
                 student.section = section
                 user.save()
                 student.save()
