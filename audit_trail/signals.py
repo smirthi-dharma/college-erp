@@ -9,12 +9,14 @@ logged. Application code must use ``save()`` / ``delete()``; the audit tests sca
 """
 import logging
 
+from axes.signals import user_locked_out
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.db.models.signals import post_delete, post_save, pre_save
 
 from . import context
+from .ip import get_client_ip
 from .models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -45,17 +47,10 @@ def connect():
     user_logged_in.connect(_logged_in, dispatch_uid='audit_login', weak=False)
     user_logged_out.connect(_logged_out, dispatch_uid='audit_logout', weak=False)
     user_login_failed.connect(_login_failed, dispatch_uid='audit_login_failed', weak=False)
+    user_locked_out.connect(_locked_out, dispatch_uid='audit_locked_out', weak=False)
 
 
 # --- helpers --------------------------------------------------------------------------
-
-def _client_ip(request):
-    header = getattr(settings, 'AUDIT_CLIENT_IP_HEADER', None)  # e.g. 'HTTP_X_FORWARDED_FOR' behind a trusted proxy
-    value = request.META.get(header) if header else None
-    if value:
-        value = value.split(',')[0].strip()
-    return value or request.META.get('REMOTE_ADDR') or None
-
 
 def _actor(request, user=None):
     """Return the actor/request columns for a new entry."""
@@ -63,7 +58,7 @@ def _actor(request, user=None):
         return {'source': 'system'}
     data = {'source': 'web'}
     if request is not None:
-        data.update(ip_address=_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', '')[:200],
+        data.update(ip_address=get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', '')[:200],
                     request_method=request.method, request_path=request.path[:300])
         user = user or getattr(request, 'user', None)
     if user is not None and getattr(user, 'is_authenticated', False):
@@ -147,4 +142,10 @@ def _login_failed(sender, credentials, request=None, **kwargs):
     # Only the email that was tried; the password is never read or stored.
     email = str((credentials or {}).get('email') or (credentials or {}).get('username') or '')[:254]
     AuditLog.objects.create(action=AuditLog.Action.LOGIN_FAILED, actor_email=email,
+                            **_actor(request or context.current_request()))
+
+
+def _locked_out(sender, request=None, username=None, ip_address=None, **kwargs):
+    """django-axes refused a login because of repeated failures."""
+    AuditLog.objects.create(action=AuditLog.Action.LOCKED_OUT, actor_email=str(username or '')[:254],
                             **_actor(request or context.current_request()))

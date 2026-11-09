@@ -8,7 +8,8 @@ python3.13 -m venv .venv && .venv/bin/pip install -r requirements.txt
 # Postgres (Postgres.app): start the server, then create the dev database
 createdb -U postgres -h localhost college_erp_dev      # default DATABASE_URL
 
-export DJANGO_DEBUG=1                                  # required locally: DEBUG is OFF by default (safe for production)
+cp .env.example .env                                   # then edit .env: DJANGO_DEBUG=1 and your own DJANGO_SECRET_KEY
+                                                       # (python -c "import secrets; print(secrets.token_urlsafe(64))")
 .venv/bin/python manage.py migrate_schemas --shared    # public schema (college registry)
 .venv/bin/python manage.py create_demo_college         # schema "demo", host demo.localhost, 3 users
 .venv/bin/python manage.py runserver                   # open http://demo.localhost:8000/
@@ -20,15 +21,19 @@ Demo logins (dev only): `admin@demo.in`, `staff@demo.in`, `student@demo.in`, pas
 Checks that CI runs (all must pass before merging):
 
 ```bash
-.venv/bin/python manage.py test                 # 74 tests: isolation, access control, audit log
+.venv/bin/python manage.py test                 # 84 tests: isolation, access control, lockout, audit log
 .venv/bin/ruff check .
 .venv/bin/bandit -q -c pyproject.toml -r main_app colleges college_management_system audit_trail --severity-level medium
 .venv/bin/pip-audit -r requirements.txt --strict
 ```
 
+Secret scan (also in CI): `git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline`
+
+Unlock a locked-out login: `python manage.py tenant_command axes_reset --schema=demo`
+
 Production-like check: `DJANGO_DEBUG=0 DJANGO_SECRET_KEY=... DJANGO_ALLOWED_HOSTS=.example.com RECAPTCHA_SITE_KEY=x RECAPTCHA_SECRET_KEY=y python manage.py check --deploy --fail-level WARNING`
 
-Environment variables: `DATABASE_URL`, `DJANGO_SECRET_KEY` (required unless DEBUG), `DJANGO_DEBUG` (default 0; set 1 locally),
+Environment variables: `DATABASE_URL`, `DJANGO_SECRET_KEY` (always required, no default), `DJANGO_DEBUG` (default 0; set 1 locally),
 `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `FCM_SERVER_KEY`,
 `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `AUDIT_CLIENT_IP_HEADER` (only behind a proxy you control).
 With `DJANGO_DEBUG=0` run `collectstatic` first, set the reCAPTCHA keys, and list real hosts in `DJANGO_ALLOWED_HOSTS`.

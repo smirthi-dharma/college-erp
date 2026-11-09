@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 
 import json
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -68,6 +69,7 @@ TENANT_APPS = [
     'django.contrib.messages',
     'main_app.apps.MainAppConfig',
     'audit_trail',
+    'axes',
 ]
 
 # Models of these apps are recorded in the audit log (audit_trail).
@@ -89,6 +91,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'audit_trail.middleware.AuditContextMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     # Third Part Middleware
@@ -169,7 +172,10 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # keep existing integer keys
 AUTH_USER_MODEL = 'main_app.CustomUser'
-AUTHENTICATION_BACKENDS = ['main_app.EmailBackend.EmailBackend']
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',  # must be first: refuses locked-out users
+    'main_app.EmailBackend.EmailBackend',
+]
 TIME_ZONE = 'Asia/Kolkata'
 
 # Session Configuration for Remember Me functionality
@@ -233,3 +239,17 @@ if not DEBUG:
 
 # Deliberate: HSTS preload is irreversible in practice; revisit when all college subdomains are HTTPS.
 SILENCED_SYSTEM_CHECKS = ['security.W021']
+
+# --- Login lockout (django-axes) ---------------------------------------------------
+# 5 failed logins for the same email from the same address lock that pair for 30 minutes;
+# a successful login clears the count. Lockout data lives in each college's own schema.
+# Pairing email+address means an attacker cannot lock a principal out of their own account
+# from elsewhere, and students sharing the college's network address do not lock each other out.
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=30)
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
+AXES_USERNAME_FORM_FIELD = 'username'  # the key doLogin passes to authenticate()
+AXES_ENABLE_ADMIN = False
+AXES_CLIENT_IP_CALLABLE = 'audit_trail.ip.get_client_ip'
+AXES_HTTP_RESPONSE_CODE = 429

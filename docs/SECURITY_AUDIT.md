@@ -1,12 +1,12 @@
 # Security audit of the inherited code
 
 Date: 2026-11-09. Scope: every view, form, template and setting inherited from Ansarimajid/College-ERP
-(64 application routes: 3 public, 2 shared by several roles, 32 HoD, 18 staff, 9 student), checked against
+(64 application routes at audit time; 60 after the library pages were removed), checked against
 the non-negotiables in CLAUDE.md. Method: read all view code and templates, wrote failing tests first
 (`main_app/tests/`), fixed until green, then broke each protection on purpose to confirm the tests catch it.
 
-Result: 74 automated tests pass: 17 tenant isolation (`colleges`), 39 in `main_app` (access control, CSRF, GET-writes,
-injection, login, `user_type`, passwords) and 18 audit log (`audit_trail`). CI runs them together with ruff, bandit,
+Result: 84 automated tests pass: 17 tenant isolation (`colleges`), 49 in `main_app` (access control, CSRF, GET-writes,
+injection, login, lockout, `user_type`, passwords, library removal) and 18 audit log (`audit_trail`). CI runs them together with ruff, bandit,
 pip-audit and `manage.py check --deploy`; all of these also pass locally. No inherited secret strings remain in the working tree.
 
 ## Findings and fixes
@@ -49,15 +49,15 @@ no entry; a failure to log stops the change). Design choices:
 
 ## Open items (not fixed here)
 
-1. **No login rate limit or lockout.** Only reCAPTCHA protects `/doLogin/`. Add django-axes (or similar) before the pilot.
-2. **Old secrets remain in git history** (Gmail app password, `SECRET_KEY`, reCAPTCHA and Firebase keys). They
-   belong to the upstream author; treat them as public. Rewrite history only if you want them gone from your private repo.
-3. **Library module** (`add_book`, `issue_book`, `view_issued_book`, `view_books`) is out of pilot scope,
-   has missing templates (HTTP 500), and no object-level rules. Remove or hide before pilot.
+1. ~~No login rate limit or lockout~~ **Done** (django-axes): 5 failed logins for the same email from the same address lock that pair for 30 minutes (HTTP 429, also for unknown emails), a success resets the count, lock data lives in each college's schema and lockouts are written to the audit log. Residual risk: a distributed guessing attack on one account from many addresses is slowed only by reCAPTCHA and the password rules. Unlock a pair with `python manage.py tenant_command axes_reset --schema=<college>`.
+2. **Old secrets** (Gmail app password, `SECRET_KEY`, reCAPTCHA and Firebase keys) were in the upstream history. The private
+   repository starts from a fresh single commit, so they are not in it. They belong to the upstream author; treat them as public.
+3. ~~Library module~~ **Removed** from URLs, menus, views, forms and templates (out of pilot scope). The `Book`, `IssuedBook`
+   and `Library` models and their Django-admin entries remain until a migration drops them.
 4. **Uploaded-file serving** is untested: files are stored per college, but how a college's photos are served
    (and kept private) is not built. The development `static()` route serves `MEDIA_ROOT` without authentication.
-5. **Firebase web config** in `showFirebaseJS` (service worker) is the upstream project's. It is public client
-   configuration, but must be replaced with your own Firebase project before push notifications are used.
+5. **Firebase web config** now comes from `FIREBASE_WEB_CONFIG` (your own project); the upstream project's config was removed
+   from the service worker and three templates, and the service worker returns 404 until configured.
    The legacy FCM endpoint used by `notifications.py` has been retired by Google; move to the HTTP v1 API.
 6. **Password-reset flow** (`/accounts/password_reset/`) was not tested for per-college isolation, and the
    email settings still point at SMTP via environment variables that are not set.
