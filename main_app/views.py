@@ -8,7 +8,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render, reverse
 from django.views.decorators.http import require_POST
 
-from .access import ALL_ROLES, COLLEGE_ADMIN, STAFF, offering_for_user, public_view, role_required
+from .access import ALL_ROLES, COLLEGE_ADMIN, STAFF, home_url_for, offering_for_user, public_view, role_required
 from .models import Attendance
 
 # Create your views here.
@@ -17,12 +17,11 @@ from .models import Attendance
 @public_view
 def login_page(request):
     if request.user.is_authenticated:
-        if request.user.user_type == '1':
-            return redirect(reverse("admin_home"))
-        elif request.user.user_type == '2':
-            return redirect(reverse("staff_home"))
-        else:
-            return redirect(reverse("student_home"))
+        home = home_url_for(request.user)
+        if home:
+            return redirect(home)
+        logout(request)  # a role with no pages yet (Head of department): do not loop
+        messages.error(request, 'Your role has no pages yet. Please contact your college administrator.')
     return render(request, 'main_app/login.html', {
         'recaptcha_site_key': settings.RECAPTCHA_SITE_KEY if settings.RECAPTCHA_SECRET_KEY else '',
     })
@@ -56,6 +55,9 @@ def doLogin(request, **kwargs):
 
         #Authenticate
         user = authenticate(request, username=request.POST.get('email'), password=request.POST.get('password'))
+        if user is not None and home_url_for(user) is None:
+            messages.error(request, 'Your role has no pages yet. Please contact your college administrator.')
+            return redirect("/")
         if user is not None:
             login(request, user)
             

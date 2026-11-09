@@ -25,7 +25,8 @@ logger = logging.getLogger(__name__)
 REDACTED_FIELDS = {'password', 'fcm_token'}
 # Personal data: we record that the field changed, not its value, so that the log never
 # blocks an erasure request (DPDP Act) and never leaks names/addresses to log readers.
-MASKED_FIELDS = {'first_name', 'last_name', 'email', 'address', 'gender', 'profile_pic'}
+MASKED_FIELDS = {'first_name', 'last_name', 'email', 'address', 'gender', 'profile_pic',
+                 'phone', 'date_of_birth', 'full_name', 'roll_number', 'employee_id'}
 # Bookkeeping that changes on every login/save and says nothing about intent.
 IGNORED_FIELDS = {'last_login', 'updated_at', 'created_at'}
 

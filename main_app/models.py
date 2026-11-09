@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+from django.db.models.functions import Lower
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -33,8 +34,10 @@ class CustomUserManager(UserManager):
 class CustomUser(AbstractUser):
     # Stored as strings; compare with these constants, never with bare 1/2/3.
     # "1" is the college-wide administrator (it was called HOD in the inherited code; the stored value is unchanged).
-    COLLEGE_ADMIN, STAFF, STUDENT = "1", "2", "3"
-    USER_TYPE = ((COLLEGE_ADMIN, "College admin"), (STAFF, "Staff"), (STUDENT, "Student"))
+    # "4" (Head of department) has no pages yet: it is refused everywhere until the scoped role is built.
+    COLLEGE_ADMIN, STAFF, STUDENT, HEAD_OF_DEPARTMENT = "1", "2", "3", "4"
+    USER_TYPE = ((COLLEGE_ADMIN, "College admin"), (STAFF, "Staff"), (STUDENT, "Student"),
+                 (HEAD_OF_DEPARTMENT, "Head of department"))
     GENDER = [("M", "Male"), ("F", "Female")]
     
     
@@ -45,6 +48,7 @@ class CustomUser(AbstractUser):
     gender = models.CharField(max_length=1, choices=GENDER)
     profile_pic = models.ImageField()
     address = models.TextField()
+    phone = models.CharField(max_length=13, blank=True, default="")  # +91XXXXXXXXXX
     fcm_token = models.TextField(default="")  # For firebase notifications
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -66,13 +70,29 @@ class Admin(models.Model):
 
 
 
+def _clean_identifier(value):
+    """Roll numbers and employee IDs: trimmed, and blank means 'none' (so uniqueness ignores it)."""
+    value = (value or '').strip()
+    return value or None
+
+
 class Student(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    # Free text (any college's scheme), trimmed; unique ignoring case ("21A001" = "21a001").
+    roll_number = models.CharField(max_length=30, null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
     # Programme and batch follow from the section (section.batch.programme).
     section = models.ForeignKey('academics.Section', on_delete=models.PROTECT, null=True, blank=True)
 
+    class Meta:
+        constraints = [models.UniqueConstraint(Lower('roll_number'), name='uniq_student_roll_number_ci')]
+
     def __str__(self):
         return self.admin.last_name + ", " + self.admin.first_name
+
+    def save(self, *args, **kwargs):
+        self.roll_number = _clean_identifier(self.roll_number)
+        super().save(*args, **kwargs)
 
 def expiry():
     # Kept only because migration 0001 references it; the library models are gone (migration 0004).
@@ -81,10 +101,19 @@ def expiry():
 
 class Staff(models.Model):
     department = models.ForeignKey('academics.Department', on_delete=models.PROTECT, null=True, blank=True)
+    employee_id = models.CharField(max_length=30, null=True, blank=True)  # trimmed, unique ignoring case
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(Lower('employee_id'), name='uniq_staff_employee_id_ci')]
 
     def __str__(self):
         return self.admin.first_name + " " +  self.admin.last_name
+
+    def save(self, *args, **kwargs):
+        self.employee_id = _clean_identifier(self.employee_id)
+        super().save(*args, **kwargs)
+
 
 
 class Attendance(models.Model):
@@ -148,6 +177,52 @@ class NotificationStudent(models.Model):
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class Guardian(models.Model):
+    """A parent or guardian as a person (a contact record; no login yet). One person can have several children.
+
+    Consent to WhatsApp messages belongs to the person. It is `unknown` until the consent feature records an
+    answer; main_app.whatsapp.send_whatsapp refuses to send unless it is exactly `yes`.
+    """
+    CONSENT_UNKNOWN, CONSENT_YES, CONSENT_NO = 'unknown', 'yes', 'no'
+    CONSENT = [(CONSENT_UNKNOWN, 'Unknown'), (CONSENT_YES, 'Yes'), (CONSENT_NO, 'No')]
+
+    full_name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=13)  # +91XXXXXXXXXX, unique per college
+    email = models.EmailField(blank=True, default="")
+    whatsapp_consent = models.CharField(max_length=7, choices=CONSENT, default=CONSENT_UNKNOWN)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['phone'], name='uniq_guardian_phone')]
+
+    def __str__(self):
+        return 'Guardian #%s' % self.pk
+
+
+class StudentGuardian(models.Model):
+    """Links a student to a guardian (siblings share one guardian)."""
+    FATHER, MOTHER, GUARDIAN, OTHER = 'father', 'mother', 'guardian', 'other'
+    RELATION = [(FATHER, 'Father'), (MOTHER, 'Mother'), (GUARDIAN, 'Guardian'), (OTHER, 'Other')]
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    guardian = models.ForeignKey(Guardian, on_delete=models.CASCADE)
+    relation = models.CharField(max_length=10, choices=RELATION)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['student', 'guardian'], name='uniq_student_guardian'),
+            models.UniqueConstraint(fields=['student'], condition=models.Q(is_primary=True),
+                                    name='one_primary_guardian_per_student'),
+        ]
+
+    def __str__(self):
+        return 'Link #%s' % self.pk
 
 
 class StudentResult(models.Model):

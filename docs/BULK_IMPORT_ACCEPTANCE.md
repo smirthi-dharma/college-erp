@@ -1,6 +1,6 @@
 # Bulk Excel import (pilot item 2): design and acceptance checks
 
-Status: APPROVED 2026-11-09 (no first password; free-text roll numbers) with seven changes (section "Changes approved" below). One decision is still open (role for item 1). Build starts after it.
+Status: BUILT (branch `feat/bulk-import`). Approved 2026-11-09 with no first password, free-text roll numbers and changes C1-C7; Option A for the role (rename to College admin in PR #5, new Head-of-department role "4" with no pages). Measured: 2,000 students validate in 0.2 s and save in about 10 s locally. Not built (out of scope as listed): background processing for >2,000 rows (follow-up), set-password e-mails, parent logins, consent recording, fees blocker for rollback (the registry `ROLLBACK_BLOCKERS` is in place; fee models must register).
 
 ## What exists today
 Students and staff are added one at a time. There is no roll number, no phone number, no employee ID and no parent
@@ -124,11 +124,5 @@ C7. **Roll numbers** are trimmed and unique case-insensitively (`2101A` = `2101a
 Checks changed by the above: 1 (2,000 rows), 8 (as written), 9 (guardian links), 12 (college admin only, HoD and staff 403),
 13 (also rollback), 16 (case-insensitive), 17 (2,000 rows), 19 (single-add forms get roll number, phone, DOB), plus new C2-C7.
 
-## Open decision (blocks only C1)
-The code has one admin role (user_type "1", constant `HOD`) that runs the whole college: it already adds students, staff
-and structure. A separate HoD role does not exist, so "HoD gets 403" cannot be tested yet.
-- **Option A (recommended):** rename that role to **College admin** (constant `COLLEGE_ADMIN`, label in the UI; same
-  permissions, a mechanical rename in about 80 places) and add a new role **Head of department** (user_type "4") that has no
-  pages yet and therefore gets 403 everywhere, including import. The scoped HoD arrives later without touching the college admin.
-- **Option B:** keep one role and skip the HoD part of the test (staff and students get 403, the admin role is allowed).
-  Cheaper, but the HoD guarantee is then untested.
+## Decision (closed)
+Option A was approved: role "1" is College admin (PR #5), role "4" Head of department exists with no pages and gets 403 everywhere (it cannot log in yet and sees a clear message).

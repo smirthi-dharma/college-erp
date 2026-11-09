@@ -24,6 +24,17 @@ class CustomUserForm(FormSettings):
         'password': forms.PasswordInput(),
     }
     profile_pic = forms.ImageField()
+    phone = forms.CharField(required=False, help_text="10-digit Indian mobile number")
+
+    def clean_phone(self):
+        from bulk_import.parsing import normalize_phone
+        value = (self.cleaned_data.get('phone') or '').strip()
+        if not value:
+            return ''
+        phone = normalize_phone(value)
+        if phone is None:
+            raise forms.ValidationError("Enter a 10-digit Indian mobile number")
+        return phone
 
     def __init__(self, *args, **kwargs):
         super(CustomUserForm, self).__init__(*args, **kwargs)
@@ -60,7 +71,7 @@ class CustomUserForm(FormSettings):
 
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'gender',  'password','profile_pic', 'address' ]
+        fields = ['first_name', 'last_name', 'email', 'gender',  'password','profile_pic', 'address', 'phone']
 
 
 class StudentForm(CustomUserForm):
@@ -70,7 +81,8 @@ class StudentForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Student
         fields = CustomUserForm.Meta.fields + \
-            ['section']
+            ['roll_number', 'date_of_birth', 'section']
+        widgets = {'date_of_birth': DateInput(attrs={'type': 'date'})}
 
 
 class AdminForm(CustomUserForm):
@@ -89,7 +101,7 @@ class StaffForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Staff
         fields = CustomUserForm.Meta.fields + \
-            ['department']
+            ['employee_id', 'department']
 
 
 class LeaveReportStaffForm(FormSettings):

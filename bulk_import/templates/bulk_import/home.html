@@ -1,0 +1,32 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <div class="card"><div class="card-header"><h3 class="card-title">Import from Excel</h3></div>
+    <div class="card-body">
+      <p>Students first, then parents (they are matched by roll number), then staff. Each import is checked first and nothing is saved until you confirm. Imported people get no password.</p>
+      <ul>
+        {% for key, label in kinds %}
+        <li><a href="{% url 'import_upload' key %}">Import {{ label|lower }}</a> &middot; <a href="{% url 'import_template' key %}">download template</a></li>
+        {% endfor %}
+      </ul>
+    </div></div>
+  <div class="card"><div class="card-header"><h3 class="card-title">Recent imports</h3></div>
+    <div class="card-body">
+      <table class="table table-bordered">
+        <thead class="thead-dark"><tr><th>When</th><th>Kind</th><th>File</th><th>New</th><th>Updated</th><th>Unchanged</th><th>By</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {% for b in batches %}
+          <tr><td>{{ b.imported_at|date:"Y-m-d H:i" }}</td><td>{{ b.get_kind_display }}</td><td>{{ b.file_name }}</td>
+            <td>{{ b.created }}</td><td>{{ b.updated }}</td><td>{{ b.unchanged }}</td><td>{{ b.imported_by|default:"-" }}</td><td>{{ b.get_status_display }}</td>
+            <td>{% if b.status == 'applied' %}
+              {% if b.blockers %}<small class="text-muted">Cannot roll back: {{ b.blockers|join:"; " }}.</small>
+              {% else %}<form method="post" action="{% url 'import_rollback' b.pk %}" onsubmit="return confirm('Remove everything this import created?')">{% csrf_token %}<button class="btn btn-warning btn-sm">Roll back</button></form>{% endif %}
+            {% endif %}</td></tr>
+        {% empty %}<tr><td colspan="9">No imports yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+</div></section>
+{% endblock content %}

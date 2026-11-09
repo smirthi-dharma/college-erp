@@ -87,6 +87,18 @@ marks only for students actively enrolled in an offering they teach (this also c
 sees only offerings they are or were enrolled in. Withdrawal keeps the row, so history is never lost.
 Open: finer "HoD of one department only" rule; the Django admin lockdown and 2FA (next PR).
 
+## Bulk import (2026-11-09)
+
+College admin only (`role_required(COLLEGE_ADMIN, strict=True)`: staff, students and the Head-of-department role get HTTP 403, tested on every page).
+Upload -> full validation without saving -> preview -> confirm, one transaction. Files: `.xlsx` only, 5 MB, 2,000 rows, macros and
+zip bombs refused, read with `data_only` (formulas are never evaluated), every cell becomes plain text, spreadsheets we hand out
+neutralise formula-like text. The file is never stored (only its SHA-256). Imported accounts have no password. The import
+cannot set WhatsApp consent, and `main_app.whatsapp.send_whatsapp` is the only way to message a guardian (refuses unless
+consent is exactly `yes`; a test fails if anything else calls the transport). Every created or updated row and the batch are
+audited (phone, date of birth, guardian name, roll number and employee ID are masked in the log). Rollback (college admin) removes
+exactly what an import created, only while nothing refers to it; imports that updated rows cannot be rolled back.
+Open: large files need background processing; set-password e-mails; fees must register a rollback blocker.
+
 ## Rules for new code
 
 - Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails. The test now walks every URL of the application (only the 2FA admin and Django's own auth/static views are exempt) and also pins the exact list of public pages, so a new page cannot be open to everyone by accident.
