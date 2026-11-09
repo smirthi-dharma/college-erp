@@ -1,0 +1,152 @@
+{
+  "_meta": {
+    "description": "Reference data for the CO-PO (OBE) module. Values under 'prescribed' come from official NBA/AICTE documents; values under 'configurable_defaults' are NOT prescribed and must be confirmed per college.",
+    "compiled_on": "2026-11-09",
+    "sources": {
+      "S1": "NBA, Manual for Accreditation of UG Engineering Programs (Tier I), 2026 Edition - https://www.nbaind.org/files/Manual%20for%20UG%20Engineering%20Tier%20I-%202026%20Edition_Format_20260521165316.pdf",
+      "S2": "NBA, SAR format UG Engineering Tier II, 14 Jan 2025 - https://www.nbaind.org/files/2-SAR-UG-EG-T2-14-1-2025_Format_20250115122255.pdf",
+      "S3": "AICTE, Examination Reform Policy, Nov 2018 - https://aicte.gov.in/sites/default/files/ExaminationReforms.pdf"
+    }
+  },
+
+  "po_sets": {
+    "NBA_UG_ENGG_GAPC4": {
+      "framework": "NBA GAPC V4.0",
+      "effective_from": "2024 SAR revision",
+      "editable_by_college": false,
+      "source": "S1 section 3.4; S2 Annexure II",
+      "outcomes": [
+        {"code": "PO1", "title": "Engineering Knowledge", "statement": "Apply knowledge of mathematics, natural science, computing, engineering fundamentals and an engineering specialization as specified in WK1 to WK4 respectively to develop to the solution of complex engineering problems.", "wk": ["WK1", "WK2", "WK3", "WK4"]},
+        {"code": "PO2", "title": "Problem Analysis", "statement": "Identify, formulate, review research literature and analyze complex engineering problems reaching substantiated conclusions with consideration for sustainable development.", "wk": ["WK1", "WK2", "WK3", "WK4"]},
+        {"code": "PO3", "title": "Design/Development of Solutions", "statement": "Design creative solutions for complex engineering problems and design/develop systems/components/processes to meet identified needs with consideration for the public health and safety, whole-life cost, net zero carbon, culture, society and environment as required.", "wk": ["WK5"]},
+        {"code": "PO4", "title": "Conduct Investigations of Complex Problems", "statement": "Conduct investigations of complex engineering problems using research-based knowledge including design of experiments, modelling, analysis & interpretation of data to provide valid conclusions.", "wk": ["WK8"]},
+        {"code": "PO5", "title": "Engineering Tool Usage", "statement": "Create, select and apply appropriate techniques, resources and modern engineering & IT tools, including prediction and modelling recognizing their limitations to solve complex engineering problems.", "wk": ["WK2", "WK6"]},
+        {"code": "PO6", "title": "The Engineer and The World", "statement": "Analyze and evaluate societal and environmental aspects while solving complex engineering problems for its impact on sustainability with reference to economy, health, safety, legal framework, culture and environment.", "wk": ["WK1", "WK5", "WK7"]},
+        {"code": "PO7", "title": "Ethics", "statement": "Apply ethical principles and commit to professional ethics, human values, diversity and inclusion; adhere to national & international laws.", "wk": ["WK9"]},
+        {"code": "PO8", "title": "Individual and Collaborative Team work", "statement": "Function effectively as an individual, and as a member or leader in diverse/multi-disciplinary teams.", "wk": []},
+        {"code": "PO9", "title": "Communication", "statement": "Communicate effectively and inclusively within the engineering community and society at large, such as being able to comprehend and write effective reports and design documentation, make effective presentations considering cultural, language, and learning differences.", "wk": []},
+        {"code": "PO10", "title": "Project Management and Finance", "statement": "Apply knowledge and understanding of engineering management principles and economic decision-making and apply these to one's own work, as a member and leader in a team, and to manage projects and in multidisciplinary environments.", "wk": []},
+        {"code": "PO11", "title": "Life-Long Learning", "statement": "Recognize the need for, and have the preparation and ability for i) independent and life-long learning ii) adaptability to new and emerging technologies and iii) critical thinking in the broadest context of technological change.", "wk": ["WK8"]}
+      ]
+    },
+    "NBA_UG_ENGG_GAPC3": {
+      "framework": "NBA GAPC V3.0 (legacy)",
+      "effective_from": "2013 SAR revision",
+      "superseded_by": "NBA_UG_ENGG_GAPC4",
+      "editable_by_college": false,
+      "source": "S3 section 2.3 (PO statements as used in the AICTE policy); S1 section 3.1 (12 POs under GAPC V3.0)",
+      "outcomes": [
+        {"code": "PO1", "title": "Engineering knowledge", "statement": "Apply the knowledge of mathematics, science, engineering fundamentals, and an engineering specialisation for the solution of complex engineering problems."},
+        {"code": "PO2", "title": "Problem analysis", "statement": "Identify, formulate, research literature, and analyse complex engineering problems reaching substantiated conclusions using first principles of mathematics, natural sciences, and engineering sciences."},
+        {"code": "PO3", "title": "Design/Development of Solutions", "statement": "Design solutions for complex engineering problems and design system components or processes that meet the specified needs with appropriate consideration for public health and safety, and cultural, societal, and environmental considerations."},
+        {"code": "PO4", "title": "Conduct investigations of complex problems", "statement": "Use research-based knowledge and research methods including design of experiments, analysis and interpretation of data, and synthesis of the information to provide valid conclusions."},
+        {"code": "PO5", "title": "Modern tool usage", "statement": "Create, select, and apply appropriate techniques, resources, and modern engineering and IT tools including prediction and modelling to complex engineering activities with an understanding of the limitations."},
+        {"code": "PO6", "title": "The engineer and society", "statement": "Apply reasoning informed by the contextual knowledge to assess societal, health, safety, legal, and cultural issues and the consequent responsibilities relevant to the professional engineering practice."},
+        {"code": "PO7", "title": "Environment and sustainability", "statement": "Understand the impact of the professional engineering solutions in societal and environmental contexts, and demonstrate the knowledge of, and the need for sustainable development."},
+        {"code": "PO8", "title": "Ethics", "statement": "Apply ethical principles and commit to professional ethics and responsibilities and norms of the engineering practice."},
+        {"code": "PO9", "title": "Individual and team work", "statement": "Function effectively as an individual, and as a member or leader in diverse teams, and in multidisciplinary settings."},
+        {"code": "PO10", "title": "Communication", "statement": "Communicate effectively on complex engineering activities with the engineering community and with the society at large, such as being able to comprehend and write effective reports and design documentation, make effective presentations, and give and receive clear instructions."},
+        {"code": "PO11", "title": "Project management and finance", "statement": "Demonstrate knowledge and understanding of the engineering and management principles and apply these to one's work, as a member and leader in a team, to manage projects and in multidisciplinary environments."},
+        {"code": "PO12", "title": "Life-long learning", "statement": "Recognise the need for, and have the preparation and ability to engage in independent and life-long learning in the broadest context of technological change."}
+      ]
+    }
+  },
+
+  "knowledge_profile_gapc4": {
+    "source": "S1 section 3.3",
+    "items": [
+      {"code": "WK1", "summary": "Natural sciences and awareness of relevant social sciences"},
+      {"code": "WK2", "summary": "Mathematics, numerical analysis, data analysis, statistics, computer and information science"},
+      {"code": "WK3", "summary": "Engineering fundamentals"},
+      {"code": "WK4", "summary": "Engineering specialist knowledge"},
+      {"code": "WK5", "summary": "Design and operations knowledge incl. resource use, environment, whole-life cost, net zero carbon"},
+      {"code": "WK6", "summary": "Engineering practice (technology) in practice areas"},
+      {"code": "WK7", "summary": "Role of engineering in society, public safety, sustainable development"},
+      {"code": "WK8", "summary": "Current research literature, critical thinking"},
+      {"code": "WK9", "summary": "Ethics, inclusive behaviour and conduct"}
+    ]
+  },
+
+  "prescribed": {
+    "correlation_levels": {
+      "source": "S2 Table 1.4.2.1",
+      "values": [
+        {"value": 1, "label": "Slight (Low)"},
+        {"value": 2, "label": "Moderate (Medium)"},
+        {"value": 3, "label": "Substantial (High)"},
+        {"value": null, "label": "No correlation", "display": "-"}
+      ]
+    },
+    "pso_limits": {
+      "tier_1": {"min": 2, "max": 4, "note": "if required", "source": "S1 section 3.4"},
+      "tier_2": {"max": 3, "note": "up to 2-3", "source": "S2 Annexure II"}
+    },
+    "max_cos_per_course_guideline": {"value": 6, "enforcement": "warn", "source": "S2 section 1.4.1"},
+    "co_target_modes": {
+      "source": "S2 section 3.7.2",
+      "modes": ["class_average", "fixed_threshold"],
+      "note": "Target may be percentage of students scoring more than class average, or set by the program."
+    },
+    "program_direct_po_attainment": {
+      "rule": "average across all courses addressing that PO/PSO",
+      "source": "S2 note to Table 3.8.1"
+    },
+    "indirect_attainment_sources": {
+      "examples": ["student exit survey", "employer survey"],
+      "required_fields": ["survey_type", "source_location"],
+      "source": "S2 notes to Table 3.8.2"
+    },
+    "assessment_windows": {
+      "CAY": "Current Academic Year",
+      "CAYm1": "Current Academic Year minus 1 (Current Assessment Year)",
+      "CAYm2": "Current Academic Year minus 2 (Current Assessment Year minus 1)",
+      "source": "S2"
+    },
+    "course_code_convention": {
+      "example": "C101",
+      "rule": "first digit = year of study, remaining two digits = course number in that year",
+      "source": "S2 note to Table 3.8.1"
+    },
+    "nba_export_tables": [
+      "1.4.1.1 Course outcomes",
+      "1.4.2.1 Course articulation matrix",
+      "1.5.1 Program articulation matrix",
+      "3.8.1 PO/PSO attainment - direct",
+      "3.8.2 PO/PSO attainment - indirect",
+      "3.8.3 Overall PO/PSO attainment"
+    ]
+  },
+
+  "bloom_levels": {
+    "source": "S3 sections 3.1-3.2",
+    "verbs_are_suggestions_only": true,
+    "levels": [
+      {"level": 1, "code": "L1", "name": "Remembering", "descriptor": "Recalling from the memory of the previously learned material", "verbs": ["list", "define", "tell", "describe", "recite", "recall", "identify", "show", "label", "tabulate", "quote", "name", "who", "when", "where"]},
+      {"level": 2, "code": "L2", "name": "Understanding", "descriptor": "Explaining ideas or concepts", "verbs": ["describe", "explain", "paraphrase", "restate", "associate", "contrast", "summarize", "differentiate", "interpret", "discuss"]},
+      {"level": 3, "code": "L3", "name": "Applying", "descriptor": "Using the information in another familiar situation", "verbs": ["calculate", "predict", "apply", "solve", "illustrate", "use", "demonstrate", "determine", "model", "experiment", "show", "examine", "modify"]},
+      {"level": 4, "code": "L4", "name": "Analysing", "descriptor": "Breaking information into the part to explore understandings and relationships", "verbs": ["classify", "outline", "break down", "categorize", "analyze", "diagram", "illustrate", "infer", "select"]},
+      {"level": 5, "code": "L5", "name": "Evaluating", "descriptor": "Justifying a decision or course of action", "verbs": ["assess", "decide", "choose", "rank", "grade", "test", "measure", "defend", "recommend", "convince", "select", "judge", "support", "conclude", "argue", "justify", "compare", "summarize", "evaluate"]},
+      {"level": 6, "code": "L6", "name": "Creating", "descriptor": "Generating new ideas, products or new ways of viewing things", "verbs": ["design", "formulate", "build", "invent", "create", "compose", "generate", "derive", "modify", "develop", "integrate"]}
+    ],
+    "question_paper_fields": ["question_no", "question", "marks", "co", "bloom_level", "po", "pi_code"],
+    "lower_order_cap_example": {"levels": ["L1"], "max_share_of_marks": 0.40, "note": "AICTE example: no more than 40% weightage for knowledge-oriented questions; institution sets its own cap, may vary by course", "source": "S3 section 3.3"}
+  },
+
+  "configurable_defaults": {
+    "_warning": "NOT prescribed by NBA, NAAC or AICTE. Common practice only. Must be confirmed by each college and stored in a versioned rule set.",
+    "co_target_mode": "fixed_threshold",
+    "fixed_threshold_percent_of_max_marks": 60,
+    "attainment_level_bands": [
+      {"level": 3, "min_percent_students": 70},
+      {"level": 2, "min_percent_students": 60},
+      {"level": 1, "min_percent_students": 50}
+    ],
+    "cie_see_weighting": {"cie": 0.4, "see": 0.6},
+    "course_po_formula": "correlation_weighted_average_of_co_levels",
+    "direct_indirect_weighting": {"direct": 0.8, "indirect": 0.2},
+    "po_target_level": 2.0,
+    "absent_students": "exclude_from_denominator",
+    "rounding_decimals": 2,
+    "lower_order_cap": {"levels": ["L1", "L2"], "max_share_of_marks": 0.40}
+  }
+}
