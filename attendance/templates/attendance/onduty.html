@@ -1,0 +1,11 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid"><div class="card"><div class="card-body">
+  <p>On-duty marks entered by teachers. Until you decide they count as present; rejecting turns them into absent.</p>
+  <table class="table table-bordered"><thead class="thead-dark"><tr><th>Date</th><th>Subject</th><th>Student</th><th></th></tr></thead><tbody>
+    {% for r in reports %}<tr><td>{{ r.attendance.date }}</td><td>{{ r.attendance.offering.subject.name }}</td><td>{{ r.student }}</td><td>
+      <form method="post" action="{% url 'onduty_decide' r.pk %}" style="display:inline">{% csrf_token %}<button name="decision" value="approve" class="btn btn-success btn-sm">Approve</button> <button name="decision" value="reject" class="btn btn-danger btn-sm">Reject</button></form></td></tr>
+    {% empty %}<tr><td colspan="4">Nothing waiting for review.</td></tr>{% endfor %}
+  </tbody></table></div></div></div></section>
+{% endblock content %}

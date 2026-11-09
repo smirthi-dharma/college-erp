@@ -1,0 +1,15 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid"><div class="card"><div class="card-body">
+  <form method="get" class="form-inline mb-3">
+    <select name="section" class="form-control mr-2"><option value="">All sections</option>{% for s in sections %}<option value="{{ s.pk }}"{% if section and section.pk == s.pk %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    <select name="offering" class="form-control mr-2"><option value="">All subjects</option>{% for o in offerings %}<option value="{{ o.pk }}"{% if offering and offering.pk == o.pk %} selected{% endif %}>{{ o.subject.code }} {{ o.section }}</option>{% endfor %}</select>
+    <button class="btn btn-primary mr-2">Filter</button>
+    <a class="btn btn-secondary" href="?section={{ section.pk|default:'' }}&offering={{ offering.pk|default:'' }}&format=xlsx">Download Excel</a>
+  </form>
+  <table class="table table-bordered"><thead class="thead-dark"><tr><th>Roll no.</th><th>Student</th><th>Section</th><th>Subject</th><th>Held</th><th>Attended</th><th>%</th><th>Status</th><th>Can still miss</th></tr></thead><tbody>
+    {% for student, e in rows %}<tr><td>{{ student.roll_number|default:"-" }}</td><td>{{ student }}</td><td>{{ student.section|default:"-" }}</td><td>{% if e.offering %}{{ e.offering.subject.name }}{% else %}Overall{% endif %}</td><td>{{ e.held }}</td><td>{{ e.attended }}</td><td>{{ e.percent }}</td><td>{{ e.status|upper }}</td><td>{{ e.can_miss }}</td></tr>
+    {% empty %}<tr><td colspan="9">Nobody is below the early-warning line.</td></tr>{% endfor %}
+  </tbody></table></div></div></div></section>
+{% endblock content %}

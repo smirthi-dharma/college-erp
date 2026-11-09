@@ -1,0 +1,18 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <div class="card"><div class="card-body">
+    <h5>{{ offering.subject.name }} &middot; {{ offering.section }} &middot; {{ day|date:"j M Y" }}</h5>
+    <p><strong>{{ absent|length }}</strong> absent{% if on_duty %}, <strong>{{ on_duty|length }}</strong> on duty (the college admin reviews these){% endif %}.
+       {% if absent %}Absent: {% for s in absent %}{{ s }}{% if not forloop.last %}; {% endif %}{% endfor %}{% endif %}</p>
+    {% if flagged %}<h6>Attendance watch</h6>
+    <table class="table table-sm"><thead><tr><th>Student</th><th>Subject</th><th>%</th><th>Status</th><th>Can still miss</th></tr></thead><tbody>
+      {% for student, e in flagged %}<tr><td>{{ student }}</td><td>{% if e.offering %}{{ e.offering.subject.name }}{% else %}Overall{% endif %}</td><td>{{ e.percent }}</td><td>{{ e.status|upper }}</td><td>{{ e.can_miss }}</td></tr>{% endfor %}
+    </tbody></table>{% endif %}
+    <a class="btn btn-primary" href="{% url 'attendance_home' %}">Another class</a>
+    <a class="btn btn-link" href="{% url 'attendance_class' offering.pk %}?date={{ day|date:'Y-m-d' }}&period={{ period }}">Change this class</a>
+  </div></div>
+</div></section>
+<script>try{localStorage.removeItem("{{ draft_key }}");}catch(e){}</script>
+{% endblock content %}

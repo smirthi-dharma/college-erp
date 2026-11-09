@@ -99,6 +99,14 @@ audited (phone, date of birth, guardian name, roll number and employee ID are ma
 exactly what an import created, only while nothing refers to it; imports that updated rows cannot be rolled back.
 Open: large files need background processing; set-password e-mails; fees must register a rollback blocker.
 
+## Attendance (2026-11-09)
+
+Teachers take attendance only for offerings they teach and only for students on that date's class list; a substitute (assigned for one
+class, date and period by the college admin) replaces the regular teacher for that class only and has no other access. Condonation, on-duty
+review, substitutes and rules are college-admin only (HTTP 403 for others, tested). Saves are one transaction with database uniqueness
+(class per offering/date/period, one report per student), so a retry or a double tap cannot duplicate. Every attendance, condonation,
+substitute and rule change is audited. Rules (75% and so on) are data, not code.
+
 ## Rules for new code
 
 - Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails. The test now walks every URL of the application (only the 2FA admin and Django's own auth/static views are exempt) and also pins the exact list of public pages, so a new page cannot be open to everyone by accident.

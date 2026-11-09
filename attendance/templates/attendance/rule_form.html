@@ -1,0 +1,6 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid"><div class="card card-primary"><div class="card-header"><h3 class="card-title">{{ regulation }}</h3></div>
+  <form method="post">{% csrf_token %}<div class="card-body">{{ form.non_field_errors }}{{ form.as_p }}</div><div class="card-footer"><button class="btn btn-success">Save</button> <a href="{% url 'rules_list' %}">Back</a></div></form></div></div></section>
+{% endblock content %}

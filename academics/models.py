@@ -4,6 +4,7 @@ subjects (catalogue), terms, offerings (who teaches what to whom) and enrolments
 Lives in each college's own schema. Never use queryset.update()/bulk_create() on these
 models: the audit log listens to save()/delete().
 """
+import datetime
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -161,7 +162,7 @@ class Enrolment(models.Model):
     student = models.ForeignKey("main_app.Student", on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS, default=ACTIVE)
     source = models.CharField(max_length=10, choices=SOURCE, default=MANUAL)
-    enrolled_on = models.DateField(auto_now_add=True)
+    enrolled_on = models.DateField(default=datetime.date.today)  # the first class date this student can be marked for
     withdrawn_on = models.DateField(null=True, blank=True)
 
     class Meta:

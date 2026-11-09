@@ -30,7 +30,7 @@ def student_home(request):
     offerings = _own_offerings(student, active_only=True)
     total_subject = offerings.count()
     total_attendance = AttendanceReport.objects.filter(student=student).count()
-    total_present = AttendanceReport.objects.filter(student=student, status=True).count()
+    total_present = AttendanceReport.objects.filter(student=student, status__in=['present', 'on_duty']).count()
     if total_attendance == 0:  # Don't divide. DivisionByZero
         percent_absent = percent_present = 0
     else:
@@ -42,9 +42,12 @@ def student_home(request):
     for offering in offerings:
         reports = AttendanceReport.objects.filter(attendance__offering=offering, student=student)
         subject_name.append(offering.subject.name)
-        data_present.append(reports.filter(status=True).count())
-        data_absent.append(reports.filter(status=False).count())
+        data_present.append(reports.filter(status__in=['present', 'on_duty']).count())
+        data_absent.append(reports.filter(status='absent').count())
+    from attendance.services import summarize
+    attendance_summary = summarize([student])[student.pk]
     context = {
+        'attendance_summary': attendance_summary,
         'total_attendance': total_attendance,
         'percent_present': percent_present,
         'percent_absent': percent_absent,
@@ -79,7 +82,7 @@ def student_view_attendance(request):
             return JsonResponse({'error': 'Invalid date'}, status=400)
         attendance = Attendance.objects.filter(date__range=(start_date, end_date), offering=offering)
         attendance_reports = AttendanceReport.objects.filter(attendance__in=attendance, student=student)
-        json_data = [{"date": str(report.attendance.date), "status": report.status}
+        json_data = [{"date": str(report.attendance.date), "status": report.status != "absent"}
                      for report in attendance_reports]
         return JsonResponse(json.dumps(json_data), safe=False)
 

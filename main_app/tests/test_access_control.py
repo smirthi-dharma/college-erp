@@ -5,6 +5,7 @@ college, object-level access (a student cannot read another student's data, a
 staff member cannot act on another teacher's subject), CSRF, and no state
 changes over GET.
 """
+import datetime
 import json
 import re
 
@@ -39,6 +40,9 @@ def all_routes():
             elif isinstance(p, URLPattern):
                 yield '/' + re.sub(r'<[^>]+>', '1', route), p.callback, p.name
     return [r for r in walk(get_resolver().url_patterns) if not is_framework_view(r[1], r[0])]
+
+
+TODAY = datetime.date.today().isoformat()
 
 
 class PolicyTests(WorldTestCase):
@@ -123,10 +127,9 @@ class RoleSeparationTests(WorldTestCase):
             ('post', '/student/view/leave/', {'id': 1, 'status': 1}),
             ('post', '/staff/result/add/', {'student_list': self.stud_ids['stud1@a.in'], 'offering': self.sub1,
                                             'test': 100, 'exam': 100}),
-            ('post', '/staff/attendance/save/', {'student_ids': json.dumps([{'id': self.stud_ids['stud1@a.in'], 'status': 1}]),
-                                                 'date': '2026-02-02', 'offering': self.sub1}),
+            ('post', '/attendance/class/%d/' % self.sub1, {'date': TODAY, 'period': 1, 'key': 'k'}),
             ('get', '/staff/home/', None), ('get', '/admin/home/', None),
-            ('get', '/staff/attendance/take/', None), ('get', '/student/manage/', None),
+            ('get', '/attendance/', None), ('get', '/student/manage/', None),
         ]
         for method, path, data in attempts:
             resp = getattr(client, method)(path, data) if data is not None else getattr(client, method)(path)
@@ -183,9 +186,9 @@ class StudentDataIsolationTests(WorldTestCase):
         for path, data in (
             ('/staff/result/fetch/', {'offering': self.sub1, 'student': self.stud_ids['stud2@a.in']}),
             ('/staff/get_students/', {'offering': self.sub1}),
-            ('/staff/attendance/fetch/', {'attendance_date_id': self.att1}),
+            ('/attendance/class/%d/saved/' % self.sub1, None),
         ):
-            resp = client.post(path, data)
+            resp = client.post(path, data) if data is not None else client.get(path)
             self.assertIn(resp.status_code, (302, 403))
             self.assertNotContains(resp, 'Stu', status_code=resp.status_code)
 
@@ -193,15 +196,14 @@ class StudentDataIsolationTests(WorldTestCase):
 class StaffObjectAccessTests(WorldTestCase):
     """A staff member works only on their own subjects, and only with students of that subject's course."""
 
-    def _save_attendance(self, client, subject, student_pk, day='2026-02-02'):
-        return client.post('/staff/attendance/save/', {
-            'student_ids': json.dumps([{'id': student_pk, 'status': 1}]),
-            'date': day, 'offering': subject})
+    def _save_attendance(self, client, offering, student_pk, status='present'):
+        return client.post('/attendance/class/%d/' % offering, {
+            'date': TODAY, 'period': 1, 'key': 'k1', 'st_%d' % student_pk: status})
 
     def test_staff_can_take_attendance_for_own_subject(self):
         before = self.snapshot()
-        resp = self._save_attendance(self.as_user(self.staff1), self.sub1, self.stud_ids['stud1@a.in'])
-        self.assertEqual((resp.status_code, resp.content), (200, b'OK'))
+        resp = self._save_attendance(self.as_user(self.staff1), self.sub1, self.stud_ids['stud1@a.in'], 'absent')
+        self.assertEqual(resp.status_code, 302)
         self.assertEqual(self.snapshot()['main_app.Attendance'], before['main_app.Attendance'] + 1)
 
     def test_staff_cannot_take_attendance_for_another_teachers_subject(self):
@@ -210,10 +212,10 @@ class StaffObjectAccessTests(WorldTestCase):
         self.assertEqual(resp.status_code, 403)
         self.assertEqual(self.snapshot(), before)
 
-    def test_staff_cannot_mark_students_outside_the_subjects_course(self):
+    def test_staff_cannot_mark_students_who_are_not_on_the_class_list(self):
         before = self.snapshot()
         resp = self._save_attendance(self.as_user(self.staff1), self.sub1, self.stud_ids['stud3@a.in'])
-        self.assertIn(resp.status_code, (400, 403))
+        self.assertEqual(resp.status_code, 403)
         self.assertEqual(self.snapshot(), before)
 
     def test_staff_cannot_list_students_of_another_teachers_subject(self):
@@ -221,14 +223,10 @@ class StaffObjectAccessTests(WorldTestCase):
         self.assertEqual(resp.status_code, 403)
         self.assertNotContains(resp, 'Three', status_code=403)
 
-    def test_staff_cannot_read_or_change_attendance_of_another_teachers_subject(self):
+    def test_staff_cannot_read_or_change_the_attendance_of_another_teachers_class(self):
         client = self.as_user(self.staff1)
-        self.assertEqual(client.post('/staff/attendance/fetch/', {'attendance_date_id': self.att2}).status_code, 403)
-        before = self.snapshot()
-        resp = client.post('/staff/attendance/update_save/', {
-            'student_ids': json.dumps([{'id': self.stud3.pk, 'status': 0}]), 'date': self.att2})
-        self.assertEqual(resp.status_code, 403)
-        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(client.get('/attendance/class/%d/' % self.sub2).status_code, 403)
+        self.assertEqual(client.get('/attendance/class/%d/saved/?date=2026-01-06' % self.sub2).status_code, 403)
 
     def test_staff_cannot_read_results_for_another_teachers_subject(self):
         resp = self.as_user(self.staff1).post('/staff/result/fetch/', {
@@ -254,11 +252,9 @@ class StaffObjectAccessTests(WorldTestCase):
             'student': self.stud_ids['stud1@a.in'], 'test': 51, 'exam': 52})
         self.assertIn((self.snapshot()['results'][0][0], 51, 52), [tuple(r) for r in self.snapshot()['results']])
 
-    def test_get_attendance_is_limited_to_own_subjects_for_staff_but_open_for_the_hod(self):
-        self.assertEqual(self.as_user(self.staff1).post('/get_attendance', {
-            'offering': self.sub2}).status_code, 403)
-        self.assertEqual(self.as_user(self.staff1).post('/get_attendance', {
-            'offering': self.sub1}).status_code, 200)
+    def test_get_attendance_is_for_the_college_admin_only(self):
+        for offering in (self.sub1, self.sub2):
+            self.assertIn(self.as_user(self.staff1).post('/get_attendance', {'offering': offering}).status_code, (302, 403))
         self.assertEqual(self.as_user(self.admin).post('/get_attendance', {
             'offering': self.sub2}).status_code, 200)
 

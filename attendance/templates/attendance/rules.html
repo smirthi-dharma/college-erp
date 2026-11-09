@@ -1,0 +1,9 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid"><div class="card"><div class="card-body">
+  <p>Rules apply per regulation. A regulation with no saved rule uses the defaults shown (75% required, warning below 80%, condonable from 65%).</p>
+  <table class="table table-bordered"><thead class="thead-dark"><tr><th>Regulation</th><th>Required</th><th>Warning</th><th>Condonable from</th><th>Counted</th><th>On duty = present</th><th>Edit window (days)</th><th></th></tr></thead><tbody>
+    {% for reg, rule, saved in rows %}<tr><td>{{ reg }}{% if not saved %} <small>(defaults)</small>{% endif %}</td><td>{{ rule.required_percent }}</td><td>{{ rule.warning_percent }}</td><td>{{ rule.condonable_percent }}</td><td>{{ rule.get_basis_display }}</td><td>{{ rule.on_duty_counts_as_present|yesno }}</td><td>{{ rule.edit_window_days }}</td><td><a class="btn btn-info btn-sm" href="{% url 'rule_edit' reg.pk %}">Edit</a></td></tr>
+    {% empty %}<tr><td colspan="8">No regulations yet.</td></tr>{% endfor %}</tbody></table></div></div></div></section>
+{% endblock content %}

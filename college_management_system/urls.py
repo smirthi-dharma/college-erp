@@ -25,6 +25,7 @@ urlpatterns = [
     path("", include('main_app.urls')),
     path("", include('academics.urls')),
     path("", include('bulk_import.urls')),
+    path("", include('attendance.urls')),
     # The inherited code had no registration/login.html (500). Login lives at "/".
     path("accounts/login/", public_view(RedirectView.as_view(pattern_name='login_page'))),
     path("accounts/", include("django.contrib.auth.urls")),

@@ -1,0 +1,14 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <form method="get" class="mb-3"><label for="d">Date</label> <input type="date" id="d" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" onchange="this.form.submit()"></form>
+  {% for o, period, cover in classes %}
+  <a class="btn btn-primary btn-lg btn-block mb-2" style="min-height:56px;text-align:left" href="{% url 'attendance_class' o.pk %}?date={{ day|date:'Y-m-d' }}&period={{ period }}">
+    <strong>{{ o.subject.name }}</strong> &middot; {{ o.section }}{% if period != 1 %} &middot; period {{ period }}{% endif %}{% if cover %} &middot; <em>you are covering</em>{% endif %}
+  </a>
+  {% empty %}<p>No classes for {{ day|date:"j M Y" }}.</p>
+  {% endfor %}
+  <p class="mt-3"><small>Everyone starts as present. Tap only the students who are absent (tap again for on duty).</small></p>
+</div></section>
+{% endblock content %}

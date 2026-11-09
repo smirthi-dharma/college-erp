@@ -1,0 +1,11 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <div class="card card-primary"><div class="card-header"><h3 class="card-title">Assign a substitute for one class</h3></div>
+    <form method="post">{% csrf_token %}<div class="card-body">{{ form.non_field_errors }}{{ form.as_p }}</div><div class="card-footer"><button class="btn btn-success">Assign</button></div></form></div>
+  <div class="card"><div class="card-body"><table class="table table-bordered"><thead class="thead-dark"><tr><th>Date</th><th>Class</th><th>Period</th><th>Substitute</th><th></th></tr></thead><tbody>
+    {% for a in records %}<tr><td>{{ a.date }}</td><td>{{ a.offering }}</td><td>{{ a.period }}</td><td>{{ a.substitute }}</td><td><form method="post" action="{% url 'substitute_delete' a.pk %}">{% csrf_token %}<button class="btn btn-danger btn-sm">Remove</button></form></td></tr>
+    {% empty %}<tr><td colspan="5">None.</td></tr>{% endfor %}</tbody></table></div></div>
+</div></section>
+{% endblock content %}

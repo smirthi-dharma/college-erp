@@ -74,20 +74,10 @@ urlpatterns = [
     path("staff/feedback/", staff_views.staff_feedback, name='staff_feedback'),
     path("staff/view/profile/", staff_views.staff_view_profile,
          name='staff_view_profile'),
-    path("staff/attendance/take/", staff_views.staff_take_attendance,
-         name='staff_take_attendance'),
-    path("staff/attendance/update/", staff_views.staff_update_attendance,
-         name='staff_update_attendance'),
     path("staff/get_students/", staff_views.get_students, name='get_students'),
 
 
 
-    path("staff/attendance/fetch/", staff_views.get_student_attendance,
-         name='get_student_attendance'),
-    path("staff/attendance/save/",
-         staff_views.save_attendance, name='save_attendance'),
-    path("staff/attendance/update_save/",
-         staff_views.update_attendance, name='update_attendance'),
     path("staff/fcmtoken/", staff_views.staff_fcmtoken, name='staff_fcmtoken'),
     path("staff/view/notification/", staff_views.staff_view_notification,
          name="staff_view_notification"),
