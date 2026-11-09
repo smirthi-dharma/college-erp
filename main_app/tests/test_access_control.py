@@ -15,7 +15,7 @@ from colleges.tests.base import PASSWORD
 
 from .world import SECRET_NOTE, STUD2_EXAM, STUD2_TEST, WorldTestCase
 
-PUBLIC_PREFIXES = ('admin/', 'accounts/', 'static/', 'media/')
+PUBLIC_PREFIXES = ('admin/', 'platform-admin/', 'accounts/', 'static/', 'media/')
 
 
 def all_routes():

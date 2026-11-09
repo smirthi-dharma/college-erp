@@ -62,7 +62,7 @@ SHARED_APPS = [
 ]
 
 TENANT_APPS = [
-    'django.contrib.admin',
+    'college_management_system.admin_apps.PlatformAdminConfig',  # Django admin, 2FA + platform staff only
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -71,6 +71,8 @@ TENANT_APPS = [
     'academics.apps.AcademicsConfig',
     'audit_trail',
     'axes',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
 ]
 
 # Models of these apps are recorded in the audit log (audit_trail).
@@ -90,6 +92,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'audit_trail.middleware.AuditContextMiddleware',
     'axes.middleware.AxesMiddleware',
@@ -254,3 +257,12 @@ AXES_USERNAME_FORM_FIELD = 'username'  # the key doLogin passes to authenticate(
 AXES_ENABLE_ADMIN = False
 AXES_CLIENT_IP_CALLABLE = 'audit_trail.ip.get_client_ip'
 AXES_HTTP_RESPONSE_CODE = 429
+
+
+# --- Django admin: platform staff only, with two-factor login --------------------------------
+# Comma-separated e-mails of OUR staff who may use the admin (they also need a superuser account
+# in the college and an authenticator device: manage.py create_platform_admin).
+PLATFORM_ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get('PLATFORM_ADMIN_EMAILS', '').split(',') if e.strip()]
+# Not the default /admin/ path (the HoD dashboard already lives under /admin/home/).
+ADMIN_URL = (os.environ.get('DJANGO_ADMIN_URL') or 'platform-admin/').lstrip('/')
+OTP_TOTP_ISSUER = 'College ERP'

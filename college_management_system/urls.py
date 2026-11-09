@@ -13,6 +13,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
@@ -20,13 +21,11 @@ from django.views.generic import RedirectView
 
 from main_app.access import public_view
 
-from . import settings
-
 urlpatterns = [
     path("", include('main_app.urls')),
     path("", include('academics.urls')),
     # The inherited code had no registration/login.html (500). Login lives at "/".
     path("accounts/login/", public_view(RedirectView.as_view(pattern_name='login_page'))),
     path("accounts/", include("django.contrib.auth.urls")),
-    path('admin/', admin.site.urls),
+    path(settings.ADMIN_URL, admin.site.urls),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,6 +1,6 @@
 # Academics models (pilot item 1): design and acceptance checks
 
-Status: APPROVED by Smirthi on 2026-11-09 with the additions below. Items 1-18 are BUILT and tested (`academics/tests/`). Items 19-21 (admin lockdown, 2FA, admin audit) are a separate feature branch and PR (`feat/admin-2fa`), NOT built yet.
+Status: APPROVED by Smirthi on 2026-11-09 with the additions below. Items 1-18 are BUILT and tested (`academics/tests/`). Items 19-21 (admin lockdown, 2FA, admin audit) are built in PR #4 (`feat/admin-2fa`).
 
 ## Design
 
@@ -66,8 +66,8 @@ Enrolment rules
 18. Every enrolment change (create, withdraw, re-activate, bulk import, transfer) writes an audit row.
 
 Django admin
-19. The admin site is reachable only by super-admin (our staff) accounts on the public schema, never by college users: a HoD, staff or student gets 403/redirect on every `/admin/` URL of a college host.
-20. Admin login requires two-factor (TOTP via django-otp): password alone cannot open any admin page; a wrong or reused code is refused; failed codes are rate-limited by axes.
+19. The admin site is reachable only by our own staff (superusers whose e-mail is in `PLATFORM_ADMIN_EMAILS`, one account per college schema), never by college users: a HoD, staff or student (even one flagged superuser) is refused on every `/platform-admin/` URL.
+20. Admin login requires two-factor (TOTP via django-otp): password alone cannot open any admin page; a wrong or reused code is refused; failed codes are throttled (django-otp) and a used code cannot be replayed.
 21. An edit made through the admin writes an audit row with the admin user as actor (test: change a Programme name in the admin, assert the audit row and its actor).
 
 ## Remaining questions
