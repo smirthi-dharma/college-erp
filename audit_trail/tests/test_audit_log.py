@@ -26,7 +26,7 @@ class RecordingTests(AuditTestCase):
     def test_create_update_delete_are_recorded_with_field_changes(self):
         from main_app.models import StudentResult
         with tenant_context(self.college_a):
-            result = StudentResult.objects.get(student__admin_id=self.stud1.pk, subject_id=self.sub1)
+            result = StudentResult.objects.get(student__admin_id=self.stud1.pk, offering_id=self.sub1)
             result_pk = result.pk
             result.test = 99
             result.save()
@@ -38,42 +38,42 @@ class RecordingTests(AuditTestCase):
         self.assertEqual(entries[1].changes['test'], ['99.0', None])
 
     def test_create_is_recorded(self):
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
-            course = Course.objects.create(name='Brand new')
-        (entry,) = self.new(model_label='main_app.Course')
+            course = Department.objects.create(name='Brand new', code='Brand new')
+        (entry,) = self.new(model_label='academics.Department')
         self.assertEqual((entry.action, entry.object_pk, entry.changes['name']), ('create', str(course.pk), [None, 'Brand new']))
 
     def test_a_save_that_changes_nothing_is_not_logged(self):
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
-            course = Course.objects.get(pk=self.course1)
+            course = Department.objects.get(pk=self.dept1)
             course.save()
-        self.assertEqual(self.new(model_label='main_app.Course'), [])
+        self.assertEqual(self.new(model_label='academics.Department'), [])
 
     def test_cascaded_deletes_are_recorded(self):
         with tenant_context(self.college_a):
-            from main_app.models import Subject
-            Subject.objects.get(pk=self.sub1).delete()
+            from main_app.models import CustomUser
+            CustomUser.objects.get(pk=self.stud2.pk).delete()
         labels = {e.model_label for e in self.new(action='delete')}
-        self.assertTrue({'main_app.Subject', 'main_app.Attendance', 'main_app.AttendanceReport',
-                         'main_app.StudentResult'} <= labels)
+        self.assertTrue({'main_app.CustomUser', 'main_app.Student', 'main_app.AttendanceReport',
+                         'main_app.StudentResult', 'academics.Enrolment'} <= labels)
 
     def test_changes_made_outside_a_request_are_marked_as_system(self):
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
-            Course.objects.create(name='From a script')
-        (entry,) = self.new(model_label='main_app.Course')
+            Department.objects.create(name='From a script', code='From a script')
+        (entry,) = self.new(model_label='academics.Department')
         self.assertEqual((entry.source, entry.actor_id, entry.actor_email), ('system', None, ''))
 
     def test_a_rolled_back_change_leaves_no_entry(self):
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
             with self.assertRaises(RuntimeError):
                 with transaction.atomic():
-                    Course.objects.create(name='Rolled back')
+                    Department.objects.create(name='Rolled back', code='Rolled back')
                     raise RuntimeError('boom')
-        self.assertEqual(self.new(model_label='main_app.Course'), [])
+        self.assertEqual(self.new(model_label='academics.Department'), [])
 
     def test_unaudited_framework_tables_are_not_logged(self):
         self.as_user(self.admin).get('/admin/home/')
@@ -83,25 +83,25 @@ class RecordingTests(AuditTestCase):
 class WhoAndWhereTests(AuditTestCase):
     def test_http_change_records_actor_role_ip_and_request(self):
         self.as_user(self.admin, REMOTE_ADDR='203.0.113.7', HTTP_USER_AGENT='TestBrowser/1').post(
-            '/course/add', {'name': 'Added by HoD'})
-        (entry,) = self.new(model_label='main_app.Course')
+            '/structure/departments/add/', {'name': 'Added by HoD', 'code': 'AHOD'})
+        (entry,) = self.new(model_label='academics.Department')
         self.assertEqual(entry.actor_email, 'admin@a.in')
         self.assertEqual(entry.actor_role, '1')
         self.assertEqual(entry.actor_id, self.admin.pk)
         self.assertEqual((entry.ip_address, entry.user_agent), ('203.0.113.7', 'TestBrowser/1'))
-        self.assertEqual((entry.request_method, entry.request_path, entry.source), ('POST', '/course/add', 'web'))
+        self.assertEqual((entry.request_method, entry.request_path, entry.source), ('POST', '/structure/departments/add/', 'web'))
 
     def test_staff_marks_entry_is_attributed_to_the_teacher(self):
         self.as_user(self.staff1).post('/staff/result/add/', {
-            'student_list': self.stud_ids['stud1@a.in'], 'subject': self.sub1, 'test': 61, 'exam': 62})
+            'student_list': self.stud_ids['stud1@a.in'], 'offering': self.sub1, 'test': 61, 'exam': 62})
         (entry,) = self.new(model_label='main_app.StudentResult')
         self.assertEqual((entry.actor_email, entry.actor_role), ('staff1@a.in', '2'))
         self.assertEqual(entry.changes, {'test': ['11.0', '61.0'], 'exam': ['22.0', '62.0']})
 
     def test_forwarded_header_is_ignored_unless_a_trusted_proxy_header_is_configured(self):
         self.as_user(self.admin, REMOTE_ADDR='198.51.100.9', HTTP_X_FORWARDED_FOR='6.6.6.6').post(
-            '/course/add', {'name': 'Spoof attempt'})
-        (entry,) = self.new(model_label='main_app.Course')
+            '/structure/departments/add/', {'name': 'Spoof attempt', 'code': 'SPF'})
+        (entry,) = self.new(model_label='academics.Department')
         self.assertEqual(entry.ip_address, '198.51.100.9')
 
     def test_login_success_failure_and_logout_are_recorded(self):
@@ -155,9 +155,9 @@ class ImmutabilityTests(AuditTestCase):
             return AuditLog.objects.filter(id__gt=self.mark).first() or AuditLog.objects.create(action='update')
 
     def test_orm_cannot_change_or_delete_entries(self):
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
-            Course.objects.create(name='x')
+            Department.objects.create(name='x', code='x')
             entry = AuditLog.objects.filter(id__gt=self.mark).first()
             entry.changes = {'tampered': True}
             with self.assertRaises(AuditLogImmutable):
@@ -170,9 +170,9 @@ class ImmutabilityTests(AuditTestCase):
                 AuditLog.objects.all().delete()
 
     def test_database_itself_refuses_update_delete_and_truncate(self):
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
-            Course.objects.create(name='y')
+            Department.objects.create(name='y', code='y')
             for sql in ("UPDATE audit_trail_auditlog SET actor_email = 'x'",
                         "DELETE FROM audit_trail_auditlog",
                         "TRUNCATE audit_trail_auditlog"):
@@ -184,15 +184,15 @@ class ImmutabilityTests(AuditTestCase):
 
 class IsolationTests(AuditTestCase):
     def test_each_college_has_its_own_log(self):
-        from main_app.models import Course
+        from academics.models import Department
         self.mark_b = self._max_id(self.college_b)
         with tenant_context(self.college_a):
-            Course.objects.create(name='Only in A')
+            Department.objects.create(name='Only in A', code='Only in A')
         with tenant_context(self.college_b):
-            Course.objects.create(name='Only in B')
-            names_b = [e.changes.get('name') for e in AuditLog.objects.filter(model_label='main_app.Course')]
+            Department.objects.create(name='Only in B', code='Only in B')
+            names_b = [e.changes.get('name') for e in AuditLog.objects.filter(model_label='academics.Department')]
         with tenant_context(self.college_a):
-            names_a = [e.changes.get('name') for e in AuditLog.objects.filter(model_label='main_app.Course')]
+            names_a = [e.changes.get('name') for e in AuditLog.objects.filter(model_label='academics.Department')]
         self.assertIn([None, 'Only in A'], names_a)
         self.assertNotIn([None, 'Only in B'], names_a)
         self.assertIn([None, 'Only in B'], names_b)

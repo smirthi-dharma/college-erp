@@ -5,11 +5,11 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render, reverse
+from django.shortcuts import redirect, render, reverse
 from django.views.decorators.http import require_POST
 
-from .access import ALL_ROLES, HOD, STAFF, public_view, role_required, subject_for_user
-from .models import Attendance, Session
+from .access import ALL_ROLES, HOD, STAFF, offering_for_user, public_view, role_required
+from .models import Attendance
 
 # Create your views here.
 
@@ -92,14 +92,10 @@ def logout_user(request):
 @role_required(HOD, STAFF)
 @require_POST
 def get_attendance(request):
-    """Attendance dates of a subject. HoD: any subject; staff: only their own."""
-    subject = subject_for_user(request, request.POST.get('subject'))
-    session = get_object_or_404(Session, id=request.POST.get('session'))
-    attendance = Attendance.objects.filter(subject=subject, session=session)
-    attendance_list = [
-        {"id": attd.id, "attendance_date": str(attd.date), "session": attd.session.id}
-        for attd in attendance
-    ]
+    """Attendance dates of an offering. HoD: any offering; staff: only their own."""
+    offering = offering_for_user(request, request.POST.get('offering'))
+    attendance = Attendance.objects.filter(offering=offering)
+    attendance_list = [{"id": attd.id, "attendance_date": str(attd.date)} for attd in attendance]
     return JsonResponse(json.dumps(attendance_list), safe=False)
 
 

@@ -45,10 +45,10 @@
 
                         <div class="form-group">
                             <label>Select Subject</label>
-                            <select  id="subject" class="form-control">
+                            <select  id="offering" class="form-control">
                                 <option value="">----</option>
-                                {% for subject in subjects  %}
-                                <option value="{{subject.id}}">{{subject.name}} </option>
+                                {% for o in offerings  %}
+                                <option value="{{o.id}}">{{o.subject.name}} ({{o.term}})</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -91,10 +91,10 @@
 
        
         $("#fetch_attendance").click(function () {
-            var subject = $("#subject").val()
+            var offering = $("#offering").val()
             var start_date = $("#start_date").val()
             var end_date = $("#end_date").val()
-            if (subject.length  == 0 || end_date.length ==0 ||start_date.length == 0){
+            if (offering.length == 0 || end_date.length ==0 ||start_date.length == 0){
                 alert("Please Select Subject and Date Range");
                 return false;
             }
@@ -103,7 +103,7 @@
                 url: "{% url 'student_view_attendance' %}",
                 type: 'POST',
                 data: {
-                    subject: subject,
+                    offering: offering,
                     start_date: start_date,
                     end_date:end_date
                 }

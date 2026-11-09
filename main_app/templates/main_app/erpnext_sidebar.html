@@ -44,70 +44,12 @@
 
         <h6 class="nav-section-title">Academic Management</h6>
         
-        <div class="nav-item has-submenu {% if 'course' in request.path %}open{% endif %}">
-            <a href="#" class="nav-link">
+        <div class="nav-item">
+            {% url 'academics_home' as academics_home %}
+            <a href="{{ academics_home }}" class="nav-link {% if 'structure' in request.path %}active{% endif %}">
                 <i class="nav-icon fas fa-graduation-cap"></i>
-                <span class="nav-text">Courses</span>
-                <i class="nav-arrow fas fa-chevron-right"></i>
+                <span class="nav-text">Institution structure</span>
             </a>
-            <div class="nav-submenu">
-                <div class="nav-item">
-                    {% url 'add_course' as add_course %}
-                    <a href="{{ add_course }}" class="nav-link {% if add_course == request.path %}active{% endif %}">
-                        <span class="nav-text">Add Course</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    {% url 'manage_course' as manage_course %}
-                    <a href="{{ manage_course }}" class="nav-link {% if manage_course == request.path or 'edit_course' in request.path %}active{% endif %}">
-                        <span class="nav-text">Manage Courses</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="nav-item has-submenu {% if 'subject' in request.path %}open{% endif %}">
-            <a href="#" class="nav-link">
-                <i class="nav-icon fas fa-book"></i>
-                <span class="nav-text">Subjects</span>
-                <i class="nav-arrow fas fa-chevron-right"></i>
-            </a>
-            <div class="nav-submenu">
-                <div class="nav-item">
-                    {% url 'add_subject' as add_subject %}
-                    <a href="{{ add_subject }}" class="nav-link {% if add_subject == request.path %}active{% endif %}">
-                        <span class="nav-text">Add Subject</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    {% url 'manage_subject' as manage_subject %}
-                    <a href="{{ manage_subject }}" class="nav-link {% if manage_subject == request.path or 'edit_subject' in request.path %}active{% endif %}">
-                        <span class="nav-text">Manage Subjects</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="nav-item has-submenu {% if 'session' in request.path %}open{% endif %}">
-            <a href="#" class="nav-link">
-                <i class="nav-icon fas fa-calendar-alt"></i>
-                <span class="nav-text">Sessions</span>
-                <i class="nav-arrow fas fa-chevron-right"></i>
-            </a>
-            <div class="nav-submenu">
-                <div class="nav-item">
-                    {% url 'add_session' as add_session %}
-                    <a href="{{ add_session }}" class="nav-link {% if add_session == request.path %}active{% endif %}">
-                        <span class="nav-text">Add Session</span>
-                    </a>
-                </div>
-                <div class="nav-item">
-                    {% url 'manage_session' as manage_session %}
-                    <a href="{{ manage_session }}" class="nav-link {% if manage_session == request.path or 'edit_session' in request.path %}active{% endif %}">
-                        <span class="nav-text">Manage Sessions</span>
-                    </a>
-                </div>
-            </div>
         </div>
 
         <h6 class="nav-section-title">User Management</h6>

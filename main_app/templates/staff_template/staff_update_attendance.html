@@ -20,23 +20,15 @@
 
 
                         <div class="form-group">
-                            <label>Subject</label>
-                            <select name="subject" class="form-control" id='subject'>
+                            <label>Subject offering</label>
+                            <select name="offering" class="form-control" id='offering'>
                                 <option value="">----</option>
-                                {% for subject in subjects  %}
-                                <option value="{{subject.id}}">{{subject.name}}</option>
+                                {% for o in offerings %}
+                                <option value="{{o.id}}">{{o.subject.name}} - {{o.section}} ({{o.term}})</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Session</label>
-                            <select name="session" class="form-control" id='session'>
-                                <option value="">----</option>
-                                {% for session in sessions  %}
-                                <option value="{{session.id}}">{{session}}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                        
                         <div class="form-group"><div  style="display: none;" class="alert alert-danger" id='error_attendance'></div>
                                 <div class="alert alert-success" id='success_attendance' style="display: none;"></div>
                              <button type="button" id='fetch_attendance' class="btn btn-success btn-block">Fetch Attendance</button>
@@ -96,10 +88,9 @@
     
     $(document).ready(function () {
         $("#fetch_attendance").click(function(){
-            var subject = $("#subject").val()
-            var session = $("#session").val()
-            if (session.length < 1 || subject.length < 1){
-                $("#error_attendance").html("Kindly Choose Both Subject and Session")
+            var offering = $("#offering").val()
+            if (offering.length < 1){
+                $("#error_attendance").html("Kindly choose a subject offering")
                 $("#attendance_block").hide()
                 $("#error_attendance").show()
                 return false
@@ -111,8 +102,7 @@
                     'X-CSRFToken': csrftoken
                 },
                 data:{
-                    subject:subject,
-                    session:session
+                    offering: offering
                 }
             
             }

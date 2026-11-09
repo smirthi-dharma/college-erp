@@ -15,7 +15,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
-from .models import CustomUser, Staff, Subject
+from .models import CustomUser, Staff
 
 HOD, STAFF, STUDENT = CustomUser.HOD, CustomUser.STAFF, CustomUser.STUDENT
 ALL_ROLES = (HOD, STAFF, STUDENT)
@@ -59,16 +59,27 @@ def current_staff(request):
     return get_object_or_404(Staff, admin=request.user)
 
 
-def subject_for_staff(request, subject_id):
-    """The subject, if it belongs to the logged-in teacher; 404 if missing, 403 if someone else's."""
-    subject = get_object_or_404(Subject, id=subject_id)
-    if subject.staff_id != current_staff(request).pk:
-        raise PermissionDenied('This subject is taught by another teacher.')
-    return subject
+def offering_for_staff(request, offering_id):
+    """The offering, if the logged-in teacher teaches it; 404 if missing, 403 if someone else's."""
+    from academics.models import SubjectOffering
+    offering = get_object_or_404(SubjectOffering, id=offering_id)
+    if offering.faculty_id != current_staff(request).pk:
+        raise PermissionDenied('This offering is taught by another teacher.')
+    return offering
 
 
-def subject_for_user(request, subject_id):
-    """HoD may use any subject; staff only their own."""
+def offering_for_user(request, offering_id):
+    """HoD may use any offering; staff only their own."""
+    from academics.models import SubjectOffering
     if request.user.user_type == HOD:
-        return get_object_or_404(Subject, id=subject_id)
-    return subject_for_staff(request, subject_id)
+        return get_object_or_404(SubjectOffering, id=offering_id)
+    return offering_for_staff(request, offering_id)
+
+
+def students_of_offering(offering):
+    """Students a teacher may handle for an offering: its active enrolments (any section)."""
+    from academics.models import Enrolment
+
+    from .models import Student
+    ids = Enrolment.objects.filter(offering=offering, status=Enrolment.ACTIVE).values('student_id')
+    return Student.objects.filter(pk__in=ids)

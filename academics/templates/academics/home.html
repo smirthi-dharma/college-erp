@@ -1,0 +1,18 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">{{page_title}}</h3></div>
+      <div class="card-body">
+        <ul>
+          {% for key, title in items %}
+          <li><a href="{% url 'academics_list' key %}">{{ title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

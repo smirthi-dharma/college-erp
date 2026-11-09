@@ -1,0 +1,13 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="card card-primary">
+      <div class="card-header"><h3 class="card-title">{{page_title}}</h3></div>
+      {% include "main_app/form_template.html" with form=form button_text="Save" %}
+    </div>
+    <a href="{% url 'academics_list' key %}">Back to the list</a>
+  </div>
+</section>
+{% endblock content %}
