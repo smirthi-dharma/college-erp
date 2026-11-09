@@ -8,7 +8,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render, reverse
 from django.views.decorators.http import require_POST
 
-from .access import ALL_ROLES, HOD, STAFF, offering_for_user, public_view, role_required
+from .access import ALL_ROLES, COLLEGE_ADMIN, STAFF, offering_for_user, public_view, role_required
 from .models import Attendance
 
 # Create your views here.
@@ -89,7 +89,7 @@ def logout_user(request):
     return redirect("/")
 
 
-@role_required(HOD, STAFF)
+@role_required(COLLEGE_ADMIN, STAFF)
 @require_POST
 def get_attendance(request):
     """Attendance dates of an offering. HoD: any offering; staff: only their own."""

@@ -15,7 +15,18 @@ from colleges.tests.base import PASSWORD
 
 from .world import SECRET_NOTE, STUD2_EXAM, STUD2_TEST, WorldTestCase
 
-PUBLIC_PREFIXES = ('admin/', 'platform-admin/', 'accounts/', 'static/', 'media/')
+# Views that belong to Django itself and carry their own checks (same list as LoginCheckMiddleWare).
+FRAMEWORK_MODULES = ('django.contrib.admin', 'django.contrib.auth.views', 'django.views.static')
+
+# The ONLY pages reachable without logging in. Adding a public page means adding it here on purpose.
+EXPECTED_PUBLIC_VIEWS = {'login_page', 'user_login', 'showFirebaseJS', 'accounts/login/'}
+
+
+ADMIN_PREFIX = '/platform-admin/'  # the 2FA, platform-staff-only Django admin (tested in test_admin_2fa.py)
+
+
+def is_framework_view(view, path=''):
+    return path.startswith(ADMIN_PREFIX) or (getattr(view, '__module__', '') or '').startswith(FRAMEWORK_MODULES)
 
 
 def all_routes():
@@ -27,10 +38,22 @@ def all_routes():
                 yield from walk(p.url_patterns, route)
             elif isinstance(p, URLPattern):
                 yield '/' + re.sub(r'<[^>]+>', '1', route), p.callback, p.name
-    return [r for r in walk(get_resolver().url_patterns) if not r[0][1:].startswith(PUBLIC_PREFIXES)]
+    return [r for r in walk(get_resolver().url_patterns) if not is_framework_view(r[1], r[0])]
 
 
 class PolicyTests(WorldTestCase):
+    def test_the_walk_really_covers_the_application_pages(self):
+        # guards the guard: the HoD/college-admin dashboard lives under /admin/ and used to be skipped by a path prefix
+        paths = {path for path, _view, _name in all_routes()}
+        for expected in ('/admin/home/', '/staff/home/', '/student/home/', '/structure/', '/doLogin/'):
+            self.assertIn(expected, paths)
+        self.assertGreater(len(paths), 50)
+
+    def test_only_the_expected_pages_are_public(self):
+        public = {name or path.strip('/') + '/' if False else (name or path.lstrip('/'))
+                  for path, view, name in all_routes() if getattr(view, 'is_public', False)}
+        self.assertEqual(public, EXPECTED_PUBLIC_VIEWS)
+
     def test_every_endpoint_declares_its_access_policy(self):
         missing = [name or path for path, view, name in all_routes()
                    if not (getattr(view, 'allowed_roles', None) or getattr(view, 'is_public', False))]
