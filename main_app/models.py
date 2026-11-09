@@ -117,18 +117,32 @@ class Staff(models.Model):
 
 
 class Attendance(models.Model):
+    """One class held: an offering on a date (and period, for two classes of one offering in a day)."""
     offering = models.ForeignKey('academics.SubjectOffering', on_delete=models.PROTECT)
     date = models.DateField()
+    period = models.PositiveSmallIntegerField(default=1)
+    taken_by = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    submission_key = models.CharField(max_length=40, blank=True, default="")  # makes a retried submit idempotent
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['offering', 'date', 'period'], name='uniq_class_per_period')]
 
 
 class AttendanceReport(models.Model):
+    PRESENT, ABSENT, ON_DUTY = 'present', 'absent', 'on_duty'
+    STATUS = [(PRESENT, 'Present'), (ABSENT, 'Absent'), (ON_DUTY, 'On duty')]
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     attendance = models.ForeignKey(Attendance, on_delete=models.CASCADE)
-    status = models.BooleanField(default=False)
+    status = models.CharField(max_length=10, choices=STATUS, default=PRESENT)
+    needs_review = models.BooleanField(default=False)  # on-duty marked by a teacher awaits the college admin
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['attendance', 'student'], name='uniq_report_per_student')]
 
 
 class LeaveReportStudent(models.Model):

@@ -1,0 +1,12 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <div class="card card-primary"><div class="card-header"><h3 class="card-title">Condone a shortage</h3></div>
+    <form method="post">{% csrf_token %}<div class="card-body">{{ form.non_field_errors }}{{ form.as_p }}</div><div class="card-footer"><button class="btn btn-success">Condone</button></div></form></div>
+  <div class="card"><div class="card-body"><table class="table table-bordered"><thead class="thead-dark"><tr><th>Student</th><th>Subject</th><th>% then</th><th>Reason</th><th>By / when</th><th></th></tr></thead><tbody>
+    {% for c in records %}<tr><td>{{ c.student }}</td><td>{% if c.offering %}{{ c.offering.subject.name }}{% else %}Overall{% endif %}</td><td>{{ c.percentage_at_approval }}</td><td>{{ c.reason }}</td><td>{{ c.approved_by|default:"-" }} {{ c.approved_at|date:"Y-m-d" }}</td>
+      <td>{% if c.active %}<form method="post" action="{% url 'condonation_revoke' c.pk %}">{% csrf_token %}<button class="btn btn-warning btn-sm">Revoke</button></form>{% else %}Revoked{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6">None yet.</td></tr>{% endfor %}</tbody></table></div></div>
+</div></section>
+{% endblock content %}

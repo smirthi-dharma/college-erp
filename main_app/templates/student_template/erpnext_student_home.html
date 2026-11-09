@@ -2,6 +2,8 @@
 {% load static %}
 {% block page_title %}{{page_title}}{% endblock page_title %}
 {% block content %}
+{% if attendance_summary.status == 'shortage' %}<div class="alert alert-danger"><a href="{% url 'my_attendance' %}">Your attendance is below the required {{ attendance_summary.rule.required_percent|floatformat:"-2" }}%.</a></div>
+{% elif attendance_summary.status == 'warning' %}<div class="alert alert-warning"><a href="{% url 'my_attendance' %}">Your attendance is close to the required {{ attendance_summary.rule.required_percent|floatformat:"-2" }}%.</a></div>{% endif %}
 <div class="page-container">
     
     <!-- Stats Grid -->

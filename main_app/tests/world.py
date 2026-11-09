@@ -74,9 +74,9 @@ class WorldTestCase(TwoCollegeTestCase):
             self.sub2 = SubjectOffering.objects.create(subject=cat2, section=secs[1], term_id=self.term, faculty=self.staff2.staff).pk
             self.att1 = Attendance.objects.create(offering_id=self.sub1, date=date(2026, 1, 5)).pk
             self.att2 = Attendance.objects.create(offering_id=self.sub2, date=date(2026, 1, 6)).pk
-            AttendanceReport.objects.create(student=self.stud1.student, attendance_id=self.att1, status=True)
-            AttendanceReport.objects.create(student=self.stud2.student, attendance_id=self.att1, status=False)
-            AttendanceReport.objects.create(student=self.stud3.student, attendance_id=self.att2, status=True)
+            AttendanceReport.objects.create(student=self.stud1.student, attendance_id=self.att1, status='present')
+            AttendanceReport.objects.create(student=self.stud2.student, attendance_id=self.att1, status='absent')
+            AttendanceReport.objects.create(student=self.stud3.student, attendance_id=self.att2, status='present')
             StudentResult.objects.create(student=self.stud1.student, offering_id=self.sub1, test=11, exam=22)
             StudentResult.objects.create(student=self.stud2.student, offering_id=self.sub1,
                                          test=STUD2_TEST, exam=STUD2_EXAM)

@@ -351,17 +351,14 @@ class StaffAndStudentScopeTests(WorldTestCase):
     """9: scope follows enrolment, not the section."""
 
     def test_staff_can_only_use_students_enrolled_in_their_offering(self):
-        import json
+        import datetime
         client = self.as_user(self.staff1)
         stud3 = self.stud_ids['stud3@a.in']
-        resp = client.post('/staff/attendance/save/', {
-            'student_ids': json.dumps([{'id': stud3, 'status': 1}]), 'date': '2026-02-02', 'offering': self.sub1})
-        self.assertEqual(resp.status_code, 403)
+        post = {'date': datetime.date.today().isoformat(), 'period': 1, 'key': 'k', 'st_%d' % stud3: 'absent'}
+        self.assertEqual(client.post('/attendance/class/%d/' % self.sub1, post).status_code, 403)
         with tenant_context(self.college_a):  # once enrolled (arrear student) it works
             services.enrol(self.stud3.student, SubjectOffering.objects.get(pk=self.sub1))
-        resp = client.post('/staff/attendance/save/', {
-            'student_ids': json.dumps([{'id': stud3, 'status': 1}]), 'date': '2026-02-02', 'offering': self.sub1})
-        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(client.post('/attendance/class/%d/' % self.sub1, post).status_code, 302)
 
     def test_a_withdrawn_student_is_no_longer_offered_to_the_teacher(self):
         with tenant_context(self.college_a):

@@ -43,8 +43,8 @@ def admin_home(request):
     student_attendance_leave_list = []
     student_name_list = []
     for student in Student.objects.select_related('admin'):
-        attendance = AttendanceReport.objects.filter(student_id=student.id, status=True).count()
-        absent = AttendanceReport.objects.filter(student_id=student.id, status=False).count()
+        attendance = AttendanceReport.objects.filter(student_id=student.id, status__in=['present', 'on_duty']).count()
+        absent = AttendanceReport.objects.filter(student_id=student.id, status='absent').count()
         leave = LeaveReportStudent.objects.filter(student_id=student.id, status=1).count()
         student_attendance_present_list.append(attendance)
         student_attendance_leave_list.append(leave + absent)

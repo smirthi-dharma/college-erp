@@ -1,11 +1,9 @@
 import json
 import logging
-from datetime import datetime
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.files.storage import default_storage
-from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -57,89 +55,12 @@ def staff_home(request):
 
 
 @role_required(STAFF)
-def staff_take_attendance(request):
-    context = {
-        'offerings': _own_offerings(current_staff(request)),
-        'page_title': 'Take Attendance'
-    }
-    return render(request, 'staff_template/staff_take_attendance.html', context)
-
-
-@role_required(STAFF)
 @require_POST
 def get_students(request):
     offering = offering_for_staff(request, request.POST.get('offering'))
     student_data = [{"id": s.id, "name": s.admin.last_name + " " + s.admin.first_name}
                     for s in students_of_offering(offering).select_related('admin')]
     return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
-
-
-@role_required(STAFF)
-@require_POST
-def save_attendance(request):
-    offering = offering_for_staff(request, request.POST.get('offering'))
-    try:
-        day = datetime.strptime(request.POST.get('date', ''), '%Y-%m-%d').date()
-        entries = json.loads(request.POST.get('student_ids', ''))
-        if not isinstance(entries, list):
-            raise ValueError('student_ids must be a list')
-    except (TypeError, ValueError):
-        return HttpResponse('Invalid attendance data', status=400)
-    with transaction.atomic():
-        attendance = Attendance.objects.create(offering=offering, date=day)
-        for entry in entries:
-            student = get_object_or_404(Student, id=entry.get('id'))
-            _require_student_in_offering(student, offering)
-            AttendanceReport.objects.create(student=student, attendance=attendance,
-                                            status=bool(entry.get('status')))
-    return HttpResponse("OK")
-
-
-@role_required(STAFF)
-def staff_update_attendance(request):
-    context = {
-        'offerings': _own_offerings(current_staff(request)),
-        'page_title': 'Update Attendance'
-    }
-    return render(request, 'staff_template/staff_update_attendance.html', context)
-
-
-def _own_attendance(request, attendance_id):
-    attendance = get_object_or_404(Attendance, id=attendance_id)
-    offering_for_staff(request, attendance.offering_id)  # 403 if it is another teacher's offering
-    return attendance
-
-
-@role_required(STAFF)
-@require_POST
-def get_student_attendance(request):
-    attendance = _own_attendance(request, request.POST.get('attendance_date_id'))
-    student_data = [
-        {"id": r.student.admin.id,
-         "name": r.student.admin.last_name + " " + r.student.admin.first_name,
-         "status": r.status}
-        for r in AttendanceReport.objects.filter(attendance=attendance)
-    ]
-    return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
-
-
-@role_required(STAFF)
-@require_POST
-def update_attendance(request):
-    attendance = _own_attendance(request, request.POST.get('date'))
-    try:
-        entries = json.loads(request.POST.get('student_ids', ''))
-        if not isinstance(entries, list):
-            raise ValueError('student_ids must be a list')
-    except (TypeError, ValueError):
-        return HttpResponse('Invalid attendance data', status=400)
-    with transaction.atomic():
-        for entry in entries:
-            student = get_object_or_404(Student, admin_id=entry.get('id'))
-            report = get_object_or_404(AttendanceReport, student=student, attendance=attendance)
-            report.status = bool(entry.get('status'))
-            report.save()
-    return HttpResponse("OK")
 
 
 @role_required(STAFF)

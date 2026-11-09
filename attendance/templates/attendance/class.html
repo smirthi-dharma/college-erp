@@ -1,0 +1,39 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<style>
+  .att-row{display:flex;align-items:center;gap:8px;min-height:52px;padding:6px 10px;border-bottom:1px solid #ddd;cursor:pointer;user-select:none}
+  .att-row .roll{width:84px;font-variant-numeric:tabular-nums;color:#555}.att-row .nm{flex:1}
+  .att-row select{min-width:72px;min-height:40px;font-size:16px}
+  .att-row[data-state=absent]{background:#fde2e2}.att-row[data-state=on_duty]{background:#fff3cd}
+  #submitbar{position:sticky;bottom:0;background:#fff;padding:10px;border-top:2px solid #ccc}
+</style>
+<section class="content"><div class="container-fluid">
+  <h5>{{ offering.subject.name }} &middot; {{ offering.section }} &middot; {{ day|date:"j M Y" }}{% if period != 1 %} &middot; period {{ period }}{% endif %}</h5>
+  {% if already %}<div class="alert alert-info">This class was already saved. Submitting again updates it.</div>{% endif %}
+  <form method="post" id="attform" data-draft="{{ draft_key }}">{% csrf_token %}
+    <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="period" value="{{ period }}"><input type="hidden" name="key" value="{{ key }}">
+    {% for row in rows %}
+    <label class="att-row" data-state="{{ row.status }}">
+      <span class="roll">{{ row.student.roll_number|default:"" }}</span><span class="nm">{{ row.student.admin.last_name }}, {{ row.student.admin.first_name }}</span>
+      <select name="st_{{ row.student.pk }}"><option value="present"{% if row.status == 'present' %} selected{% endif %}>Present</option><option value="absent"{% if row.status == 'absent' %} selected{% endif %}>Absent</option><option value="on_duty"{% if row.status == 'on_duty' %} selected{% endif %}>On duty</option></select>
+    </label>
+    {% empty %}<p>No students are on the list for this date.</p>{% endfor %}
+    <div id="submitbar"><button type="submit" class="btn btn-success btn-lg btn-block" id="submitbtn">Submit ({{ absent }} absent)</button></div>
+  </form>
+</div></section>
+<script>
+(function(){
+  var form=document.getElementById('attform'),rows=form.querySelectorAll('.att-row'),btn=document.getElementById('submitbtn'),dk=form.dataset.draft,order=['present','absent','on_duty'];
+  function count(){var n=0;rows.forEach(function(r){if(r.querySelector('select').value==='absent')n++;});btn.textContent='Submit ('+n+' absent)';}
+  function paint(r){r.dataset.state=r.querySelector('select').value;}
+  function save(){try{var d={};rows.forEach(function(r){var s=r.querySelector('select');d[s.name]=s.value;});localStorage.setItem(dk,JSON.stringify(d));}catch(e){}}
+  try{var draft=JSON.parse(localStorage.getItem(dk)||'null');if(draft&&!{{ already|yesno:"true,false" }}){rows.forEach(function(r){var s=r.querySelector('select');if(draft[s.name]){s.value=draft[s.name];}});}}catch(e){}
+  rows.forEach(function(r){var s=r.querySelector('select');paint(r);
+    r.addEventListener('click',function(e){if(e.target===s||e.target.tagName==='OPTION')return;e.preventDefault();s.value=order[(order.indexOf(s.value)+1)%3];paint(r);count();save();});
+    s.addEventListener('change',function(){paint(r);count();save();});});
+  count();
+  form.addEventListener('submit',function(){btn.disabled=true;btn.textContent='Saving...';setTimeout(function(){btn.disabled=false;count();},8000);});
+})();
+</script>
+{% endblock content %}

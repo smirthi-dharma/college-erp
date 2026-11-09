@@ -12,14 +12,14 @@ def active_students_of(section):
 
 
 @transaction.atomic
-def enrol(student, offering, source=Enrolment.MANUAL):
+def enrol(student, offering, source=Enrolment.MANUAL, since=None):
     """Enrol (or re-activate) a student. Students outside the offering's section are allowed.
 
     Returns (enrolment, changed): changed is False when nothing needed doing.
     """
     enrolment = Enrolment.objects.filter(offering=offering, student=student).first()
     if enrolment is None:
-        enrolment = Enrolment(offering=offering, student=student, source=source)
+        enrolment = Enrolment(offering=offering, student=student, source=source, enrolled_on=since or datetime.date.today())
         enrolment.save()
         return enrolment, True
     if enrolment.status == Enrolment.WITHDRAWN:
@@ -46,7 +46,9 @@ def enrol_section_in_core(offering):
     """A new CORE offering enrols every active student of its section. Electives enrol nobody."""
     if offering.kind != SubjectOffering.CORE:
         return 0
-    return sum(1 for s in active_students_of(offering.section) if enrol(s, offering, Enrolment.AUTO)[1])
+    # the section's students were in this class from the start of the term, so attendance can be marked from then
+    since = min(datetime.date.today(), offering.term.start_date)
+    return sum(1 for s in active_students_of(offering.section) if enrol(s, offering, Enrolment.AUTO, since=since)[1])
 
 
 def current_core_offerings(section):
