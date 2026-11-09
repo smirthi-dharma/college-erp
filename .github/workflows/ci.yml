@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Django ${{ matrix.django-note }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        django-note: ["5.2 LTS"]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres  # pragma: allowlist secret
+          POSTGRES_DB: college_erp_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/college_erp_dev  # pragma: allowlist secret
+      DJANGO_DEBUG: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Throwaway secret key for this run
+        run: echo "DJANGO_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(64))')" >> "$GITHUB_ENV"
+      - name: Migrations are up to date
+        run: python manage.py makemigrations --check --dry-run
+      - name: Tests (tenant isolation, access control, audit log)
+        run: python manage.py test --noinput -v 2
+
+  lint:
+    name: ruff, bandit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: bandit -q -c pyproject.toml -r main_app colleges college_management_system --severity-level medium
+
+  dependencies:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - run: pip install pip-audit==2.10.1
+      - run: pip-audit -r requirements.txt --strict
+
+  deploy-check:
+    name: manage.py check --deploy (production-like settings)
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: ".ourerp.example"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "https://*.ourerp.example"
+      RECAPTCHA_SITE_KEY: ci-site-key
+      RECAPTCHA_SECRET_KEY: ci-captcha-secret  # pragma: allowlist secret
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/college_erp_dev  # pragma: allowlist secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Generate a throwaway secret key for this run
+        run: echo "DJANGO_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(64))')" >> "$GITHUB_ENV"
+      - run: python manage.py check --deploy --fail-level WARNING
+
+  secrets:
+    name: Secret scan (detect-secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - run: pip install detect-secrets==1.5.0
+      - name: Fail on any secret that is not in the audited baseline
+        run: git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline

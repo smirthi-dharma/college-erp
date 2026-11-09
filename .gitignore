@@ -1,0 +1,41 @@
+# Byte-compiled / pycacahe
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Environments
+.vscode
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+# Local secrets: never commit. Use .env.example as the template.
+.env
+.env.*
+!.env.example
+
+# User uploads are data, not source
+/media/

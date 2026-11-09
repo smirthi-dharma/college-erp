@@ -1,0 +1,25 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+extend-exclude = ["migrations", "Showcase", "media", "reports_and _resource", "static"]
+
+[tool.ruff.lint]
+# Correctness (pyflakes + pycodestyle errors), import order, bugbear, and security (flake8-bandit).
+select = ["E4", "E7", "E9", "F", "I", "B", "S", "DJ"]
+ignore = [
+    "DJ001",  # null=True on text fields: legacy schema, revisit with the data model
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may use asserts and hard-coded test passwords.
+"**/tests/*" = ["S101", "S105", "S106"]
+"main_app/tests.py" = ["S101"]
+# Legacy inherited modules use `from .models import *`; replace module by module as each is refactored.
+"main_app/*_views.py" = ["F403", "F405"]
+"main_app/views.py" = ["F403", "F405"]
+"main_app/admin.py" = ["F403", "F405"]
+"main_app/forms.py" = ["F403", "F405"]
+"main_app/models.py" = ["DJ008"]  # legacy models without __str__; add as each is refactored
+
+[tool.bandit]
+exclude_dirs = [".venv", "tests", "migrations", "Showcase", "media"]

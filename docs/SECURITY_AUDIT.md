@@ -1,0 +1,76 @@
+# Security audit of the inherited code
+
+Date: 2026-11-09. Scope: every view, form, template and setting inherited from Ansarimajid/College-ERP
+(64 application routes: 3 public, 2 shared by several roles, 32 HoD, 18 staff, 9 student), checked against
+the non-negotiables in CLAUDE.md. Method: read all view code and templates, wrote failing tests first
+(`main_app/tests/`), fixed until green, then broke each protection on purpose to confirm the tests catch it.
+
+Result: 74 automated tests pass: 17 tenant isolation (`colleges`), 39 in `main_app` (access control, CSRF, GET-writes,
+injection, login, `user_type`, passwords) and 18 audit log (`audit_trail`). CI runs them together with ruff, bandit,
+pip-audit and `manage.py check --deploy`; all of these also pass locally. No inherited secret strings remain in the working tree.
+
+## Findings and fixes
+
+| # | Severity | Finding (as inherited) | Fix | Proved by |
+|---|---|---|---|---|
+| 1 | High | Roles were enforced by comparing the view's Python module name. Views outside the three guarded modules had no check at all. `/staff/result/edit/` let **any logged-in user, including a student, change any student's marks** (observed: 11 -> 100). | Every endpoint now declares `@role_required(...)` or `@public_view` (`main_app/access.py`). The middleware refuses any view without a policy (deny by default). | `PolicyTests` (every URL has a policy), `RoleSeparationTests` |
+| 2 | High | `/get_attendance` was open to every role, so a student could list attendance records for any subject. | HoD and staff only; staff only for their own subjects. | `RoleSeparationTests`, `StaffObjectAccessTests` |
+| 3 | High | No object-level checks: a teacher could read, take, update attendance and read or write results for **any** subject and student in the college, including other teachers' and other courses' (7 endpoints). | Teachers act only on subjects they teach, and only on students enrolled in that subject's course (`subject_for_staff`, `_require_student_in_subject`). The edit-result form only offers the teacher's own subjects and students. | `StaffObjectAccessTests` (10 tests) |
+| 4 | High | `@csrf_exempt` on 20 state-changing endpoints (feedback replies, leave approval, attendance, notifications, token saves...). | All exemptions removed. Pages send the token with every AJAX call (`$.ajaxSetup` in the base templates). | `CsrfTests`: POST without a token is refused for every route and every role |
+| 5 | High | State changes over GET: five `delete_*` links and logout. Any page that embedded `<img src="/student/delete/3">` could delete records. | POST only (405 otherwise); links became small forms with CSRF tokens. | `NoStateChangeOverGetTests` |
+| 6 | High | Stored XSS: dashboards printed Python lists into `<script>` blocks with `|safe`. A student could set their first name to a script payload, which then ran in the principal's browser. | Values go through `js_json` (JSON with `<`, `>`, `&` escaped). | `InjectionTests` (fails when reverted) |
+| 7 | High | Credentials committed in the source: Gmail address and app password, Django `SECRET_KEY`, reCAPTCHA secret, **Firebase server key**. | All read from environment variables; nothing is sent when unset. The app refuses to start in production without `DJANGO_SECRET_KEY`. | `check --deploy` in CI; grep clean |
+| 8 | Medium | `user_type` defaulted to 1 (HoD): any code path that forgot the role created an administrator. The role was a string but the signals compared integers, so users created with `'3'` got no profile. | Default is student. The value is always stored as a string; signals use constants; migration backfills missing profiles. | `UserTypeTests` |
+| 9 | Medium | Password validators were switched off when `DEBUG` was off (i.e. in production), and the HoD forms never ran them. | Always on, minimum length 10, enforced in the user forms. | `PasswordPolicyTests` |
+| 10 | Medium | The email login backend ignored `is_active`: a deactivated user could still log in. Failed logins were also not recorded. | Backend honours `is_active`; login goes through Django's `authenticate()`; failures are audit-logged. | `LoginTests`, audit login tests |
+| 11 | Medium | Uploads used a global `FileSystemStorage()`, bypassing the per-college folders and mixing colleges' files. | Uses the tenant-aware default storage. | `test_uploads_use_the_per_college_storage...` (static check only; see open items) |
+| 12 | Medium | Views returned exception objects or `None` (HTTP 500) and showed `str(e)` to users, leaking internals. | Fixed in all touched views: proper 400/403/404 responses, generic user messages, details in server logs. | access-control suites |
+| 13 | Medium | `on_delete=DO_NOTHING` on attendance and student links: deleting a student or subject with attendance raised a database error and could leave dangling rows. | `CASCADE` for attendance rows, `PROTECT` for courses and sessions still in use (migration 0003). | `NoStateChangeOverGetTests.test_delete_endpoints_work_with_post` |
+| 14 | Low | Production defaults: `DEBUG` on by default, no secure cookies, no HSTS, no SSL redirect. | `DEBUG` off unless `DJANGO_DEBUG=1`; secure cookies, HSTS, SSL redirect, proxy header, CSRF trusted origins from env. | `check --deploy --fail-level WARNING` in CI |
+| 15 | Low | `/accounts/login/` crashed (missing template). | Redirects to the real login page. | policy test |
+
+## Audit log (non-negotiable: "audit log of every data change")
+
+New tenant-schema app `audit_trail`. Every create, update and delete of every `main_app` model, plus login,
+logout and failed login, writes one row: when, who (id, email, role), IP, user agent, request, model, object,
+and the changed fields. Rows are written in the same transaction as the change (a rolled-back change leaves
+no entry; a failure to log stops the change). Design choices:
+
+- Append-only twice over: the model and queryset refuse update/delete, and a database trigger refuses
+  UPDATE, DELETE and TRUNCATE on the table. Retention clean-ups must be a deliberate maintenance step.
+- Passwords, device tokens are never stored. Personal fields (names, email, address, gender, photo) are recorded
+  as "changed" without their values, and object names are `Model #id`, so the log never blocks an erasure
+  request (DPDP Act) or leaks personal data to people who can read the log.
+- Each college has its own log (separate schema); tested.
+- The client IP is the connection address. `X-Forwarded-For` is ignored unless `AUDIT_CLIENT_IP_HEADER`
+  is set to a header your proxy controls (spoof attempt tested).
+- Limit: `QuerySet.update()`, `bulk_create()` and raw SQL do not send signals. A test fails if the application
+  code uses them; new modules must be added to `AUDIT_APPS` in settings.
+
+## Open items (not fixed here)
+
+1. **No login rate limit or lockout.** Only reCAPTCHA protects `/doLogin/`. Add django-axes (or similar) before the pilot.
+2. **Old secrets remain in git history** (Gmail app password, `SECRET_KEY`, reCAPTCHA and Firebase keys). They
+   belong to the upstream author; treat them as public. Rewrite history only if you want them gone from your private repo.
+3. **Library module** (`add_book`, `issue_book`, `view_issued_book`, `view_books`) is out of pilot scope,
+   has missing templates (HTTP 500), and no object-level rules. Remove or hide before pilot.
+4. **Uploaded-file serving** is untested: files are stored per college, but how a college's photos are served
+   (and kept private) is not built. The development `static()` route serves `MEDIA_ROOT` without authentication.
+5. **Firebase web config** in `showFirebaseJS` (service worker) is the upstream project's. It is public client
+   configuration, but must be replaced with your own Firebase project before push notifications are used.
+   The legacy FCM endpoint used by `notifications.py` has been retired by Google; move to the HTTP v1 API.
+6. **Password-reset flow** (`/accounts/password_reset/`) was not tested for per-college isolation, and the
+   email settings still point at SMTP via environment variables that are not set.
+7. **No Content-Security-Policy header**; the templates use inline scripts. Plan a CSP when the React front end replaces them.
+8. HoD can read every record in their own college by design. Finer rules (HoD of one department only)
+   arrive with the departments model.
+9. Not covered by tests yet: Celery jobs, caches and backups (they do not exist yet).
+
+## Rules for new code
+
+- Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails.
+- Look up objects through the user's scope (their subjects, their students, their college), never by raw id.
+- State changes are POST (or PUT/DELETE) with the CSRF token; never `@csrf_exempt`.
+- Use `save()` / `delete()`; not `update()`, `bulk_create()` or raw SQL, so the audit log sees the change.
+- Never print Python values into scripts with `|safe`; use `js_json` or `json_script`.
+- Secrets come from the environment.
