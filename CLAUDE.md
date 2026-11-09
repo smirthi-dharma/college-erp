@@ -27,7 +27,7 @@ Full proposal (modules, roadmap, pricing, risks): https://claude.ai/artifact/8L4
 1. Institution setup: departments, programmes, batches/sections, subjects, regulations
 2. Bulk Excel import of students, parents, staff
 3. Student 360 profile
-4. QR attendance (rotating code + geofence) with 75% shortage early warning
+4. Fast teacher-marked attendance (phone-first, everyone present by default, tap absentees) with 75% shortage early warning. QR/geofence dropped 2026-11-09: screenshots can be shared and GPS faked; see docs/ATTENDANCE_ACCEPTANCE.md
 5. Internal marks with auto CO-PO attainment (questions tagged with CO + Bloom's level)
 6. Fees: structures, concessions, Razorpay/UPI payments, auto receipts, reminders
 7. WhatsApp parent alerts (daily absence digest, fee due, marks)
