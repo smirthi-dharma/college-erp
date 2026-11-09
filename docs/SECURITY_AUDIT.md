@@ -52,8 +52,7 @@ no entry; a failure to log stops the change). Design choices:
 1. ~~No login rate limit or lockout~~ **Done** (django-axes): 5 failed logins for the same email from the same address lock that pair for 30 minutes (HTTP 429, also for unknown emails), a success resets the count, lock data lives in each college's schema and lockouts are written to the audit log. Residual risk: a distributed guessing attack on one account from many addresses is slowed only by reCAPTCHA and the password rules. Unlock a pair with `python manage.py tenant_command axes_reset --schema=<college>`.
 2. **Old secrets** (Gmail app password, `SECRET_KEY`, reCAPTCHA and Firebase keys) were in the upstream history. The private
    repository starts from a fresh single commit, so they are not in it. They belong to the upstream author; treat them as public.
-3. ~~Library module~~ **Removed** from URLs, menus, views, forms and templates (out of pilot scope). The `Book`, `IssuedBook`
-   and `Library` models and their Django-admin entries remain until a migration drops them.
+3. ~~Library module~~ **Removed**: URLs, menus, views, forms, templates and (migration 0004) the Book, IssuedBook and Library tables.
 4. **Uploaded-file serving** is untested: files are stored per college, but how a college's photos are served
    (and kept private) is not built. The development `static()` route serves `MEDIA_ROOT` without authentication.
 5. **Firebase web config** now comes from `FIREBASE_WEB_CONFIG` (your own project); the upstream project's config was removed

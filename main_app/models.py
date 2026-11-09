@@ -81,16 +81,6 @@ class Course(models.Model):
     def __str__(self):
         return self.name
 
-class Book(models.Model):
-    name = models.CharField(max_length=200)
-    author = models.CharField(max_length=200)
-    isbn = models.PositiveIntegerField()
-    category = models.CharField(max_length=50)
-
-    def __str__(self):
-        return str(self.name) + " ["+str(self.isbn)+']'
-
-
 class Student(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.PROTECT, null=True, blank=False)
@@ -99,20 +89,9 @@ class Student(models.Model):
     def __str__(self):
         return self.admin.last_name + ", " + self.admin.first_name
 
-class Library(models.Model):
-    student = models.ForeignKey(Student,  on_delete=models.CASCADE, null=True, blank=False)
-    book = models.ForeignKey(Book,  on_delete=models.CASCADE, null=True, blank=False)
-    def __str__(self):
-        return str(self.student)
-
 def expiry():
+    # Kept only because migration 0001 references it; the library models are gone (migration 0004).
     return datetime.today() + timedelta(days=14)
-class IssuedBook(models.Model):
-    student_id = models.CharField(max_length=100, blank=True) 
-    isbn = models.CharField(max_length=13)
-    issued_date = models.DateField(auto_now=True)
-    expiry_date = models.DateField(default=expiry)
-
 
 
 class Staff(models.Model):
