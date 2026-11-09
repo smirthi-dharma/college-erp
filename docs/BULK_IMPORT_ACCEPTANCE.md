@@ -1,6 +1,6 @@
 # Bulk Excel import (pilot item 2): design and acceptance checks
 
-Status: PROPOSED, nothing built. Needs Smirthi's approval (and the two decisions at the bottom) before any code.
+Status: APPROVED 2026-11-09 (no first password; free-text roll numbers) with seven changes (section "Changes approved" below). One decision is still open (role for item 1). Build starts after it.
 
 ## What exists today
 Students and staff are added one at a time. There is no roll number, no phone number, no employee ID and no parent
@@ -89,9 +89,46 @@ Out of scope here: parent login accounts and the parent app, sending the welcome
 configured yet), photos, fees data, CSV, importing marks or attendance, consent records (DPDP consent comes with
 the WhatsApp feature, but parent phones are stored only for those who are imported).
 
-## Decisions needed from Smirthi
-1. **How do imported people get their first password?** Recommended: no password at import (unusable); the HoD triggers a
-   "set your password" e-mail link per student/staff, or for a whole import, once e-mail is configured (a small follow-up).
-   Alternative: generate a random password per person and give the HoD a one-time downloadable sheet. This is convenient but
-   a sheet of passwords is a leak risk, so I do not recommend it.
-2. **Roll number format:** free text (recommended, any college's scheme works) or a per-college pattern that we validate?
+## Changes approved 2026-11-09 (these replace or add to the checks above)
+
+C1. **Who may import: the college admin role only** (HoD scoping is not settled). HoD and staff get 403. See the open decision below:
+    today the code has no separate "college admin" and "HoD"; the one admin role ("1") is called HoD.
+C2. **Rollback of an import** (college admin only, audited). Allowed only when nothing refers to the imported records:
+    no attendance, marks or fees (fees: the rule is registered now and enforced once fee models exist), no manual enrolments
+    added after the import, and the person has never logged in. Rollback deletes exactly the records the import created
+    (tracked per row in `ImportBatchItem`), nothing else. **Update-mode changes cannot be rolled back** (the audit log masks
+    personal values, so the old values are not stored): a batch that updated any row is not rollback-able, and the preview
+    warns about this before Confirm. A batch can be rolled back once; the batch is marked `rolled_back` and every deletion is
+    in the audit log.
+C3. **New fields**: `Guardian.whatsapp_consent` (unknown / yes / no, default unknown) and `Student.date_of_birth` (optional;
+    Students template gets a `date_of_birth` column: ISO `2006-04-23`, `23-04-2006`, `23/04/2006` or an Excel date; not in the
+    future, not under 3 years ago). **Consent guard**: one single sending function, `send_whatsapp(guardian, ...)`, is the only
+    way to message a guardian; it raises `ConsentRequired` and sends nothing unless consent is exactly `yes`. The import can
+    never set consent (a `whatsapp_consent` column is ignored with a warning); it stays `unknown` until the consent feature
+    records it. Test: unknown, no, and missing all refuse (transport never called); yes passes; a test fails if any other
+    module calls the transport directly.
+C4. **Limit 2,000 rows per file** (Cloudflare request timeout). Background processing (Celery) is a noted follow-up for
+    bigger colleges. Check 1 and 17 are updated accordingly: a 2,000-row students file validates and saves, each step within
+    60 s on the CI runner (measured and written here once built).
+C5. **Siblings**: one guardian can be linked to several students. Model: `Guardian` (the person: name, phone, email,
+    whatsapp_consent; phone unique per college) and `StudentGuardian` (student, guardian, relation, is_primary; unique per
+    pair; at most one primary per student). The Parents sheet keeps one row per student-guardian pair; if the phone already
+    belongs to a guardian, that guardian is linked (a different name is a warning and is not overwritten unless update mode).
+    Consent belongs to the person, so it is shared by all their children. Test with two siblings and one guardian.
+C6. `ImportBatch.file_sha256` stores the SHA-256 of the uploaded file. The preview warns when the exact same file was already
+    imported (showing when and by whom).
+C7. **Roll numbers** are trimmed and unique case-insensitively (`2101A` = `2101a`), enforced by a database constraint on
+    `lower(roll_number)`, not only by the import; the same rule applies to employee IDs and to the single-add forms. The value
+    is stored as typed, trimmed.
+
+Checks changed by the above: 1 (2,000 rows), 8 (as written), 9 (guardian links), 12 (college admin only, HoD and staff 403),
+13 (also rollback), 16 (case-insensitive), 17 (2,000 rows), 19 (single-add forms get roll number, phone, DOB), plus new C2-C7.
+
+## Open decision (blocks only C1)
+The code has one admin role (user_type "1", constant `HOD`) that runs the whole college: it already adds students, staff
+and structure. A separate HoD role does not exist, so "HoD gets 403" cannot be tested yet.
+- **Option A (recommended):** rename that role to **College admin** (constant `COLLEGE_ADMIN`, label in the UI; same
+  permissions, a mechanical rename in about 80 places) and add a new role **Head of department** (user_type "4") that has no
+  pages yet and therefore gets 403 everywhere, including import. The scoped HoD arrives later without touching the college admin.
+- **Option B:** keep one role and skip the HoD part of the test (staff and students get 403, the admin role is allowed).
+  Cheaper, but the HoD guarantee is then untested.
