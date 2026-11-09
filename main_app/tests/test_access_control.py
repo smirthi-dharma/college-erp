@@ -284,9 +284,7 @@ class NoStateChangeOverGetTests(WorldTestCase):
 
     def test_no_get_request_changes_data_for_any_role(self):
         for user in (self.admin, self.staff1, self.stud1):
-            # Some inherited pages still crash (missing library templates, see the gap list);
-            # this test only cares that no GET changes data.
-            client = self.as_user(user, raise_request_exception=False)
+            client = self.as_user(user)  # every remaining page must render without raising
             before = self.snapshot()
             for path, _view, _name in all_routes():
                 if '/logout' in path:
@@ -335,3 +333,26 @@ class InjectionTests(WorldTestCase):
         root = pathlib.Path(__file__).resolve().parents[1]
         offenders = [p.name for p in root.glob('*.py') if 'FileSystemStorage()' in p.read_text()]
         self.assertEqual(offenders, [])
+
+
+class LibraryRemovedTests(WorldTestCase):
+    """The library module is out of pilot scope: no URLs, no menu entries."""
+
+    PATHS = ('/staff/addbook/', '/staff/issue_book/', '/staff/view_issued_book/', '/student/viewbooks/')
+
+    def test_library_urls_no_longer_exist(self):
+        from django.urls import NoReverseMatch, reverse
+        for name in ('add_book', 'issue_book', 'view_issued_book', 'view_books'):
+            with self.assertRaises(NoReverseMatch):
+                reverse(name)
+        for user in (self.staff1, self.stud1, self.admin):
+            client = self.as_user(user)
+            for path in self.PATHS:
+                self.assertEqual(client.get(path).status_code, 404, (user.email, path))
+
+    def test_no_menu_or_dashboard_mentions_the_library(self):
+        for user, home in ((self.admin, '/admin/home/'), (self.staff1, '/staff/home/'), (self.stud1, '/student/home/')):
+            resp = self.as_user(user).get(home)
+            self.assertEqual(resp.status_code, 200)
+            for word in ('Library', 'Add Books', 'Available Books'):
+                self.assertNotContains(resp, word)

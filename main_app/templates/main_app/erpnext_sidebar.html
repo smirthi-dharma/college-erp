@@ -262,16 +262,6 @@
             </a>
         </div>
 
-        <h6 class="nav-section-title">Library & Resources</h6>
-        
-        <div class="nav-item">
-            {% url 'add_book' as add_book %}
-            <a href="{{ add_book }}" class="nav-link {% if add_book == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-book-open"></i>
-                <span class="nav-text">Add Books</span>
-            </a>
-        </div>
-
         <h6 class="nav-section-title">Communication</h6>
         
         <div class="nav-item">
@@ -333,16 +323,6 @@
             <a href="{{ student_view_result }}" class="nav-link {% if student_view_result == request.path %}active{% endif %}">
                 <i class="nav-icon fas fa-chart-bar"></i>
                 <span class="nav-text">View Results</span>
-            </a>
-        </div>
-
-        <h6 class="nav-section-title">Library & Resources</h6>
-        
-        <div class="nav-item">
-            {% url 'view_books' as view_books %}
-            <a href="{{ view_books }}" class="nav-link {% if view_books == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-book"></i>
-                <span class="nav-text">Library Books</span>
             </a>
         </div>
 

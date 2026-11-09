@@ -402,18 +402,6 @@
                             </li>
 
                             <li class="nav-item">
-                                {% url 'add_book' as add_book %}
-                                <a href="{{add_book}}"
-                                    class="nav-link {% if add_book == request.path %} active {% endif %}">
-                                    <i class="nav-icon fas fa-comment-alt"></i>
-                                    <p>
-                                        Add Books To Lib
-
-                                    </p>
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
                                 {% url 'staff_apply_leave' as staff_apply_leave %}
                                 <a href="{{staff_apply_leave}}"
                                     class="nav-link {% if staff_apply_leave == request.path %} active {% endif %}">
@@ -529,18 +517,6 @@
                                                 <i class="nav-icon fas fa-comment-alt"></i>
                                                 <p>
                                                     Feedback
-
-                                                </p>
-                                            </a>
-                                        </li>
-
-                                        <li class="nav-item">
-                                            {% url 'view_books' as view_books %}
-                                            <a href="{{view_books}}"
-                                                class="nav-link {% if view_books == request.path %} active {% endif %}">
-                                                <i class="nav-icon fas 	fas fa-atlas"></i>
-                                                <p>
-                                                    Available Books in LIB
 
                                                 </p>
                                             </a>

@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -299,59 +299,3 @@ def fetch_student_result(request):
     if result is None:
         return HttpResponse('False')
     return HttpResponse(json.dumps({'exam': result.exam, 'test': result.test}))
-
-#library
-@role_required(STAFF)
-def add_book(request):
-    if request.method == "POST":
-        name = request.POST['name']
-        author = request.POST['author']
-        isbn = request.POST['isbn']
-        category = request.POST['category']
-
-
-        books = Book.objects.create(name=name, author=author, isbn=isbn, category=category )
-        books.save()
-        alert = True
-        return render(request, "staff_template/add_book.html", {'alert':alert})
-    context = {
-        'page_title': "Add Book"
-    }
-    return render(request, "staff_template/add_book.html",context)
-
-#issue book
-
-
-@role_required(STAFF)
-def issue_book(request):
-    form = IssueBookForm()
-    if request.method == "POST":
-        form = IssueBookForm(request.POST)
-        if form.is_valid():
-            obj = IssuedBook()
-            obj.student_id = request.POST['name2']
-            obj.isbn = request.POST['isbn2']
-            obj.save()
-            alert = True
-            return render(request, "staff_template/issue_book.html", {'obj':obj, 'alert':alert})
-    return render(request, "staff_template/issue_book.html", {'form':form})
-
-@role_required(STAFF)
-def view_issued_book(request):
-    issuedBooks = IssuedBook.objects.all()
-    details = []
-    for i in issuedBooks:
-        days = (date.today()-i.issued_date)
-        d=days.days
-        fine=0
-        if d>14:
-            day=d-14
-            fine=day*5
-        books = list(Book.objects.filter(isbn=i.isbn))
-        # students = list(models.Student.objects.filter(admin=i.admin))
-        i=0
-        for _book in books:
-            t=(books[i].name,books[i].isbn,issuedBooks[0].issued_date,issuedBooks[0].expiry_date,fine)
-            i=i+1
-            details.append(t)
-    return render(request, "staff_template/view_issued_book.html", {'issuedBooks':issuedBooks, 'details':details})

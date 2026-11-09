@@ -97,9 +97,6 @@ urlpatterns = [
     path("staff/attendance/update/", staff_views.staff_update_attendance,
          name='staff_update_attendance'),
     path("staff/get_students/", staff_views.get_students, name='get_students'),
-     path("staff/addbook/", staff_views.add_book, name="add_book"),
-    path("staff/issue_book/", staff_views.issue_book, name="issue_book"),
-    path("staff/view_issued_book/", staff_views.view_issued_book, name="view_issued_book"),
 
 
 
@@ -135,7 +132,6 @@ urlpatterns = [
      # path('student/todo',student_views.todo,name='todo'),
 
      
-     path("student/viewbooks/", student_views.view_books, name="view_books"),
 
     path("student/view/notification/", student_views.student_view_notification,
          name="student_view_notification"),

@@ -203,12 +203,3 @@ class EditResultForm(FormSettings):
 #     class Meta:
 #         model=Todo
 #         fields=["title","is_finished"]
-
-#issue book
-
-class IssueBookForm(forms.Form):
-    isbn2 = forms.ModelChoiceField(queryset=Book.objects.all(), empty_label="Book Name [ISBN]", to_field_name="isbn", label="Book (Name and ISBN)")
-    name2 = forms.ModelChoiceField(queryset=Student.objects.all(), empty_label="Name ", to_field_name="", label="Student Details")
-    
-    isbn2.widget.attrs.update({'class': 'form-control'})
-    name2.widget.attrs.update({'class':'form-control'})

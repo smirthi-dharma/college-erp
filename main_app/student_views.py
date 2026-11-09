@@ -200,16 +200,3 @@ def student_view_result(request):
         'page_title': "View Results"
     }
     return render(request, "student_template/student_view_result.html", context)
-
-
-#library
-
-@role_required(STUDENT)
-def view_books(request):
-    books = Book.objects.all()
-    context = {
-        'books': books,
-        'page_title': "Library"
-    }
-    return render(request, "student_template/view_books.html", context)
-
