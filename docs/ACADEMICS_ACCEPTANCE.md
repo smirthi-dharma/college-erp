@@ -1,6 +1,6 @@
 # Academics models (pilot item 1): design and acceptance checks
 
-Status: PROPOSED, nothing built. Needs Smirthi's approval before any code.
+Status: APPROVED by Smirthi on 2026-11-09 with the additions below. Building.
 
 ## Design
 
@@ -15,8 +15,8 @@ New tenant app `academics` (in TENANT_APPS and AUDIT_APPS; one schema per colleg
 | Section | batch, name | unique(batch, name) |
 | Subject | programme, regulation, semester, code, name, credits, kind (theory/lab) | unique(regulation, code); semester within programme duration; credits >= 0 (decimal, halves allowed) |
 | AcademicTerm | name (2026-27 ODD), start_date, end_date | minimal; needed by offerings |
-| SubjectOffering | subject, section, term, faculty (Staff) | unique(subject, section, term); section's batch must share the subject's regulation |
-| Enrolment | offering, student | unique(offering, student); student's section must equal the offering's section |
+| SubjectOffering | subject, section, term, faculty (Staff), kind (core/elective) | unique(subject, section, term); section's batch must share the subject's regulation |
+| Enrolment | offering, student, status (active/withdrawn), enrolled_on, withdrawn_on, source (auto/manual/import/transfer) | unique(offering, student); a student from another section is allowed (arrear/repeat), flagged `outside_section`; withdrawal never deletes the row |
 
 Replacing the old models:
 - `Course` -> `Programme`; `Session` -> `Batch` (+ `AcademicTerm` where it meant a term).
@@ -55,6 +55,20 @@ Regression
 
 Out of scope here: CO/PO models, timetable, fee structures, bulk Excel import (next features), and the finer "HoD sees only their department" rule (follow-up, noted in SECURITY_AUDIT item 8).
 
-## Open questions
-- Enrolment: create automatically for all students of the section when an offering is created (recommended), or only by explicit HoD action? Electives need explicit.
-- Keep the Django-admin registrations for the new models? (Recommended: yes, for super-admin support.)
+## Approved additions (2026-11-09)
+
+Enrolment rules
+13. Creating a CORE offering enrols every active student of its section (source=auto). Creating an ELECTIVE offering enrols nobody.
+14. Electives: HoD assigns students one by one, or bulk from an Excel list (.xlsx; columns: student email or roll number). The import is all-or-nothing per file, reports each bad row, ignores nothing silently, and is idempotent (re-upload creates no duplicates).
+15. A student joining a section later (lateral entry) is auto-enrolled in that section's core offerings for the current term.
+16. A section transfer withdraws the student from the old section's offerings (status=withdrawn, withdrawn_on set) and enrols them in the new section's core offerings. Their attendance and marks rows for the old offerings are untouched and still readable (counts identical before and after).
+17. A student outside the section can be enrolled by the HoD (arrear/repeat). The model and form allow it; the pilot does not use it.
+18. Every enrolment change (create, withdraw, re-activate, bulk import, transfer) writes an audit row.
+
+Django admin
+19. The admin site is reachable only by super-admin (our staff) accounts on the public schema, never by college users: a HoD, staff or student gets 403/redirect on every `/admin/` URL of a college host.
+20. Admin login requires two-factor (TOTP via django-otp): password alone cannot open any admin page; a wrong or reused code is refused; failed codes are rate-limited by axes.
+21. An edit made through the admin writes an audit row with the admin user as actor (test: change a Programme name in the admin, assert the audit row and its actor).
+
+## Remaining questions
+None. (Auto-enrol and admin decisions answered above.)
