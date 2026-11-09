@@ -70,7 +70,7 @@ class StudentForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Student
         fields = CustomUserForm.Meta.fields + \
-            ['course', 'session']
+            ['section']
 
 
 class AdminForm(CustomUserForm):
@@ -89,39 +89,7 @@ class StaffForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Staff
         fields = CustomUserForm.Meta.fields + \
-            ['course' ]
-
-
-class CourseForm(FormSettings):
-    def __init__(self, *args, **kwargs):
-        super(CourseForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        fields = ['name']
-        model = Course
-
-
-class SubjectForm(FormSettings):
-
-    def __init__(self, *args, **kwargs):
-        super(SubjectForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = Subject
-        fields = ['name', 'staff', 'course']
-
-
-class SessionForm(FormSettings):
-    def __init__(self, *args, **kwargs):
-        super(SessionForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = Session
-        fields = ['start_year', 'end_year']
-        widgets = {
-            'start_year': DateInput(attrs={'type': 'date'}),
-            'end_year': DateInput(attrs={'type': 'date'}),
-        }
+            ['department']
 
 
 class LeaveReportStaffForm(FormSettings):
@@ -187,16 +155,13 @@ class StaffEditForm(CustomUserForm):
 
 
 class EditResultForm(FormSettings):
-    session_list = Session.objects.all()
-    session_year = forms.ModelChoiceField(
-        label="Session Year", queryset=session_list, required=True)
-
     def __init__(self, *args, **kwargs):
         super(EditResultForm, self).__init__(*args, **kwargs)
 
     class Meta:
         model = StudentResult
-        fields = ['session_year', 'subject', 'student', 'test', 'exam']
+        fields = ['offering', 'student', 'test', 'exam']
+
 
 #todos
 # class TodoForm(forms.ModelForm):

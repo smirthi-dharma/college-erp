@@ -157,6 +157,13 @@ class AdminEditsAreAuditedTests(AdminTestBase):
         self.assertIn(('main_app.CustomUser', OPS), deleted)
         self.assertIn(('main_app.Student', OPS), deleted)
 
+    def test_academic_structure_edits_through_the_admin_are_logged_too(self):
+        resp = self.client_ops.post(f'{ADMIN}academics/department/add/', {'name': 'Mech', 'code': 'MECH'})
+        self.assertEqual(resp.status_code, 302)
+        (entry,) = self.new(model_label='academics.Department')
+        self.assertEqual((entry.action, entry.actor_email), ('create', OPS))
+        self.assertEqual(self.client_ops.get(f'{ADMIN}academics/enrolment/').status_code, 200)
+
     def test_a_refused_admin_cannot_change_anything(self):
         before = self.snapshot()
         client = self.as_user(self.admin)

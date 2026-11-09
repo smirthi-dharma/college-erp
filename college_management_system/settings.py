@@ -68,6 +68,7 @@ TENANT_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'main_app.apps.MainAppConfig',
+    'academics.apps.AcademicsConfig',
     'audit_trail',
     'axes',
     'django_otp',
@@ -75,7 +76,7 @@ TENANT_APPS = [
 ]
 
 # Models of these apps are recorded in the audit log (audit_trail).
-AUDIT_APPS = ['main_app']
+AUDIT_APPS = ['main_app', 'academics']
 
 INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
 

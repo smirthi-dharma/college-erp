@@ -1,0 +1,34 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">{{page_title}}</h3>
+        <a href="{% url 'academics_add' key %}" class="btn btn-success btn-sm float-right">Add</a>
+      </div>
+      <div class="card-body">
+        <table class="table table-bordered table-hover">
+          <thead class="thead-dark">
+            <tr><th>#</th>{% for h in headers %}<th>{{ h }}</th>{% endfor %}<th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              {% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}
+              <td>
+                <a href="{% url 'academics_edit' key row.obj.pk %}" class="btn btn-info btn-sm">Edit</a>
+                {% if key == 'offerings' %}<a href="{% url 'offering_enrolments' row.obj.pk %}" class="btn btn-primary btn-sm">Enrolments</a>{% endif %}
+                <form method="post" action="{% url 'academics_delete' key row.obj.pk %}" style="display:inline" onsubmit="return confirm('Delete this record?')">{% csrf_token %}<button type="submit" class="btn btn-danger btn-sm">Delete</button></form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

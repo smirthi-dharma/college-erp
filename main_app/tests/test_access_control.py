@@ -66,16 +66,18 @@ class RoleSeparationTests(WorldTestCase):
         client = self.as_user(self.staff1)
         before = self.snapshot()
         attempts = [
-            ('post', '/course/add', {'name': 'Hacked course'}),
+            ('post', '/structure/departments/add/', {'name': 'Hacked', 'code': 'HX'}),
             ('post', '/staff/add', {'first_name': 'x', 'last_name': 'y', 'email': 'evil@a.in'}),
             ('post', '/student/add/', {'first_name': 'x', 'last_name': 'y', 'email': 'evil2@a.in'}),
-            ('post', '/subject/add/', {'name': 'Evil', 'staff': self.staff_ids['staff1@a.in'], 'course': self.course1}),
-            ('post', '/add_session/', {'start_year': '2030-01-01', 'end_year': '2031-01-01'}),
+            ('post', '/structure/subjects/add/', {'name': 'Evil', 'code': 'EV1', 'programme': self.prog1, 'regulation': self.reg1, 'semester': 1, 'credits': 3, 'kind': 'theory'}),
+            ('post', '/structure/terms/add/', {'name': 'Evil term', 'start_date': '2030-01-01', 'end_date': '2031-01-01'}),
+            ('get', '/structure/', None), ('get', '/structure/programmes/', None),
             ('post', '/student/delete/%d' % self.stud_ids['stud1@a.in'], {}),
             ('post', '/staff/delete/%d' % self.staff_ids['staff2@a.in'], {}),
-            ('post', '/course/delete/%d' % self.course1, {}),
-            ('post', '/subject/delete/%d' % self.sub2, {}),
-            ('post', '/course/edit/%d' % self.course1, {'name': 'renamed'}),
+            ('post', '/structure/programmes/%d/delete/' % self.prog1, {}),
+            ('post', '/structure/offerings/%d/delete/' % self.sub2, {}),
+            ('post', '/structure/departments/%d/edit/' % self.dept1, {'name': 'renamed', 'code': 'CSE'}),
+            ('post', '/structure/offerings/%d/enrol/' % self.sub1, {'student': self.stud_ids['stud3@a.in']}),
             ('post', '/student/view/leave/', {'id': 1, 'status': 1}),
             ('post', '/staff/view/leave/', {'id': 1, 'status': 1}),
             ('post', '/student/view/feedback/', {'id': 1, 'reply': 'x'}),
@@ -93,13 +95,13 @@ class RoleSeparationTests(WorldTestCase):
         client = self.as_user(self.stud1)
         before = self.snapshot()
         attempts = [
-            ('post', '/course/add', {'name': 'Hacked'}),
+            ('post', '/structure/departments/add/', {'name': 'Hacked', 'code': 'HX'}),
             ('post', '/student/delete/%d' % self.stud_ids['stud2@a.in'], {}),
             ('post', '/student/view/leave/', {'id': 1, 'status': 1}),
-            ('post', '/staff/result/add/', {'student_list': self.stud_ids['stud1@a.in'], 'subject': self.sub1,
+            ('post', '/staff/result/add/', {'student_list': self.stud_ids['stud1@a.in'], 'offering': self.sub1,
                                             'test': 100, 'exam': 100}),
             ('post', '/staff/attendance/save/', {'student_ids': json.dumps([{'id': self.stud_ids['stud1@a.in'], 'status': 1}]),
-                                                 'date': '2026-02-02', 'subject': self.sub1, 'session': self.session}),
+                                                 'date': '2026-02-02', 'offering': self.sub1}),
             ('get', '/staff/home/', None), ('get', '/admin/home/', None),
             ('get', '/staff/attendance/take/', None), ('get', '/student/manage/', None),
         ]
@@ -113,13 +115,13 @@ class RoleSeparationTests(WorldTestCase):
         client = self.as_user(self.stud1)
         before = self.snapshot()
         resp = client.post('/staff/result/edit/', {
-            'session_year': self.session, 'subject': self.sub1,
+            'offering': self.sub1,
             'student': self.stud_ids['stud1@a.in'], 'test': 100, 'exam': 100})
         self.assertDenied(resp)
         self.assertEqual(self.snapshot(), before)
 
     def test_student_cannot_list_attendance_dates_via_get_attendance(self):
-        resp = self.as_user(self.stud1).post('/get_attendance', {'subject': self.sub2, 'session': self.session})
+        resp = self.as_user(self.stud1).post('/get_attendance', {'offering': self.sub2})
         self.assertDenied(resp)
 
     def test_positive_controls_each_role_reaches_its_own_pages(self):
@@ -127,8 +129,8 @@ class RoleSeparationTests(WorldTestCase):
         self.assertEqual(self.as_user(self.staff1).get('/staff/home/').status_code, 200)
         self.assertEqual(self.as_user(self.stud1).get('/student/home/').status_code, 200)
         before = self.snapshot()
-        self.as_user(self.admin).post('/course/add', {'name': 'Real new course'})
-        self.assertEqual(self.snapshot()['main_app.Course'], before['main_app.Course'] + 1)
+        self.as_user(self.admin).post('/structure/departments/add/', {'name': 'Real new', 'code': 'RN'})
+        self.assertEqual(self.snapshot()['academics.Department'], before['academics.Department'] + 1)
 
 
 class StudentDataIsolationTests(WorldTestCase):
@@ -148,7 +150,7 @@ class StudentDataIsolationTests(WorldTestCase):
 
     def test_attendance_query_returns_only_own_records(self):
         resp = self.as_user(self.stud1).post('/student/view/attendance/', {
-            'subject': self.sub1, 'start_date': '2026-01-01', 'end_date': '2026-01-31'})
+            'offering': self.sub1, 'start_date': '2026-01-01', 'end_date': '2026-01-31'})
         self.assertEqual(resp.status_code, 200)
         rows = json.loads(json.loads(resp.content))
         self.assertEqual(rows, [{'date': '2026-01-05', 'status': True}])  # stud2 was absent that day
@@ -156,8 +158,8 @@ class StudentDataIsolationTests(WorldTestCase):
     def test_student_cannot_query_staff_data_endpoints(self):
         client = self.as_user(self.stud1)
         for path, data in (
-            ('/staff/result/fetch/', {'subject': self.sub1, 'student': self.stud_ids['stud2@a.in']}),
-            ('/staff/get_students/', {'subject': self.sub1, 'session': self.session}),
+            ('/staff/result/fetch/', {'offering': self.sub1, 'student': self.stud_ids['stud2@a.in']}),
+            ('/staff/get_students/', {'offering': self.sub1}),
             ('/staff/attendance/fetch/', {'attendance_date_id': self.att1}),
         ):
             resp = client.post(path, data)
@@ -171,7 +173,7 @@ class StaffObjectAccessTests(WorldTestCase):
     def _save_attendance(self, client, subject, student_pk, day='2026-02-02'):
         return client.post('/staff/attendance/save/', {
             'student_ids': json.dumps([{'id': student_pk, 'status': 1}]),
-            'date': day, 'subject': subject, 'session': self.session})
+            'date': day, 'offering': subject})
 
     def test_staff_can_take_attendance_for_own_subject(self):
         before = self.snapshot()
@@ -192,7 +194,7 @@ class StaffObjectAccessTests(WorldTestCase):
         self.assertEqual(self.snapshot(), before)
 
     def test_staff_cannot_list_students_of_another_teachers_subject(self):
-        resp = self.as_user(self.staff1).post('/staff/get_students/', {'subject': self.sub2, 'session': self.session})
+        resp = self.as_user(self.staff1).post('/staff/get_students/', {'offering': self.sub2})
         self.assertEqual(resp.status_code, 403)
         self.assertNotContains(resp, 'Three', status_code=403)
 
@@ -207,35 +209,35 @@ class StaffObjectAccessTests(WorldTestCase):
 
     def test_staff_cannot_read_results_for_another_teachers_subject(self):
         resp = self.as_user(self.staff1).post('/staff/result/fetch/', {
-            'subject': self.sub2, 'student': self.stud_ids['stud3@a.in']})
+            'offering': self.sub2, 'student': self.stud_ids['stud3@a.in']})
         self.assertEqual(resp.status_code, 403)
 
     def test_staff_cannot_write_results_for_another_teachers_subject(self):
         before = self.snapshot()
         self.as_user(self.staff1).post('/staff/result/add/', {
-            'student_list': self.stud_ids['stud3@a.in'], 'subject': self.sub2, 'test': 1, 'exam': 1})
+            'student_list': self.stud_ids['stud3@a.in'], 'offering': self.sub2, 'test': 1, 'exam': 1})
         self.assertEqual(self.snapshot(), before)
 
     def test_staff_cannot_edit_results_for_another_teachers_subject(self):
         before = self.snapshot()
         self.as_user(self.staff1).post('/staff/result/edit/', {
-            'session_year': self.session, 'subject': self.sub2,
+            'offering': self.sub2,
             'student': self.stud_ids['stud3@a.in'], 'test': 1, 'exam': 1})
         self.assertEqual(self.snapshot(), before)
 
     def test_staff_can_edit_results_for_own_subject(self):
         self.as_user(self.staff1).post('/staff/result/edit/', {
-            'session_year': self.session, 'subject': self.sub1,
+            'offering': self.sub1,
             'student': self.stud_ids['stud1@a.in'], 'test': 51, 'exam': 52})
         self.assertIn((self.snapshot()['results'][0][0], 51, 52), [tuple(r) for r in self.snapshot()['results']])
 
     def test_get_attendance_is_limited_to_own_subjects_for_staff_but_open_for_the_hod(self):
         self.assertEqual(self.as_user(self.staff1).post('/get_attendance', {
-            'subject': self.sub2, 'session': self.session}).status_code, 403)
+            'offering': self.sub2}).status_code, 403)
         self.assertEqual(self.as_user(self.staff1).post('/get_attendance', {
-            'subject': self.sub1, 'session': self.session}).status_code, 200)
+            'offering': self.sub1}).status_code, 200)
         self.assertEqual(self.as_user(self.admin).post('/get_attendance', {
-            'subject': self.sub2, 'session': self.session}).status_code, 200)
+            'offering': self.sub2}).status_code, 200)
 
 
 class CsrfTests(WorldTestCase):
@@ -264,16 +266,15 @@ class NoStateChangeOverGetTests(WorldTestCase):
         before = self.snapshot()
         client = self.as_user(self.admin)
         for path in ('/student/delete/%d' % self.stud_ids['stud1@a.in'], '/staff/delete/%d' % self.staff_ids['staff1@a.in'],
-                     '/course/delete/%d' % self.course2, '/subject/delete/%d' % self.sub2,
-                     '/session/delete/%d' % self.session):
+                     '/structure/departments/%d/delete/' % self.dept_spare, '/structure/offerings/%d/delete/' % self.sub2):
             self.assertEqual(client.get(path).status_code, 405, path)
         self.assertEqual(self.snapshot(), before)
 
     def test_delete_endpoints_work_with_post(self):
         client = self.as_user(self.admin)
         before = self.snapshot()
-        self.assertEqual(client.post('/subject/delete/%d' % self.sub2).status_code, 302)
-        self.assertEqual(self.snapshot()['main_app.Subject'], before['main_app.Subject'] - 1)
+        self.assertEqual(client.post('/structure/departments/%d/delete/' % self.dept_spare).status_code, 302)
+        self.assertEqual(self.snapshot()['academics.Department'], before['academics.Department'] - 1)
 
     def test_logout_requires_post(self):
         client = self.as_user(self.admin)

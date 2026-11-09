@@ -77,6 +77,15 @@ single-use and failed codes are throttled). College users, even if flagged super
 `python manage.py create_platform_admin <schema> <email>` (`--reset-2fa` after a lost phone). The secret is shown once.
 Admin edits go through the ORM, so the audit log records them with the admin as the actor (tested for edit and delete).
 Open: no recovery codes yet (reset by command); admin pages for the `academics` models are registered after that app merges.
+## Academic structure (feature `academics`, 2026-11-09)
+
+New tenant app `academics`: Department, Programme, Regulation, Batch, Section, Subject, AcademicTerm,
+SubjectOffering, Enrolment. The old Course/Session/Subject models and their pages are gone (data migrated by
+`main_app` 0005-0007, tested on a legacy dataset). All new pages are HoD-only; the audit log covers every model
+(`AUDIT_APPS`). Staff and students are scoped by **enrolment**, not by course: a teacher can take attendance and enter
+marks only for students actively enrolled in an offering they teach (this also covers arrear students), and a student
+sees only offerings they are or were enrolled in. Withdrawal keeps the row, so history is never lost.
+Open: finer "HoD of one department only" rule; the Django admin lockdown and 2FA (next PR).
 
 ## Rules for new code
 

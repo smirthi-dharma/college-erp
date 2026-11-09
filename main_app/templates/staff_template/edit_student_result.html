@@ -46,12 +46,9 @@
 {% block custom_js %}
 <script>
     $(document).ready(function () {
-        $("#id_subject").change(function () {
+        $("#id_offering").change(function () {
             fetchStudents();
             });
-            $("#id_session_year").change(function () {
-                fetchStudents();
-                });
    $("#id_student").change(function () {
     fetch_student_result();
                 });
@@ -61,18 +58,16 @@
                 $('label[for="id_test"]').hide();
                 $('label[for="id_exam"]').hide();
         function fetchStudents(){
-            var subject = $("#id_subject").val()
-            var session = $("#id_session_year").val()
+            var offering = $("#id_offering").val()
             $("#id_student").html(null)
-            if (session.length  == 0 || subject.length == 0 || session < 1 || subject < 1){
+            if (offering.length == 0 || offering < 1){
                 return false;
             }
             $.ajax({
                 url: "{% url 'get_students' %}",
                 type: 'POST',
                 data: {
-                    subject: subject,
-                    session:session
+                    offering: offering
                 }
             }).done(function (response) {
                 var json_data = JSON.parse(response)
@@ -94,7 +89,7 @@
 
                function fetch_student_result(){
                 var student = $("#id_student").val()
-                var subject = $("#id_subject").val()
+                var offering = $("#id_offering").val()
                 $("#id_test").val(null)
                 $("#id_exam").val(null)
                 $("#id_exam").hide()
@@ -102,14 +97,14 @@
                 $("#id_test").hide()
                 $('label[for="id_test"]').hide();
                 $('label[for="id_exam"]').hide();
-                if (student.length  == 0 || subject.length == 0 || student < 1 || subject < 1){
+                if (student.length  == 0 || offering.length == 0 || student < 1 || offering < 1){
                     return false;
                 }
                 $.ajax({
                     url: "{% url 'fetch_student_result' %}",
                     type: 'POST',
                     data: {
-                        subject: subject,
+                        offering: offering,
                         student:student
                     }
                 }).done(function (response) {

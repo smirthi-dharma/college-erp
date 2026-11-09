@@ -30,14 +30,6 @@ class CustomUserManager(UserManager):
         return self._create_user(email, password, **extra_fields)
 
 
-class Session(models.Model):
-    start_year = models.DateField()
-    end_year = models.DateField()
-
-    def __str__(self):
-        return "From " + str(self.start_year) + " to " + str(self.end_year)
-
-
 class CustomUser(AbstractUser):
     # Stored as strings; compare with these constants, never with bare 1/2/3.
     HOD, STAFF, STUDENT = "1", "2", "3"
@@ -73,18 +65,10 @@ class Admin(models.Model):
 
 
 
-class Course(models.Model):
-    name = models.CharField(max_length=120)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
 class Student(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.PROTECT, null=True, blank=False)
-    session = models.ForeignKey(Session, on_delete=models.PROTECT, null=True)
+    # Programme and batch follow from the section (section.batch.programme).
+    section = models.ForeignKey('academics.Section', on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):
         return self.admin.last_name + ", " + self.admin.first_name
@@ -95,27 +79,15 @@ def expiry():
 
 
 class Staff(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.PROTECT, null=True, blank=False)
+    department = models.ForeignKey('academics.Department', on_delete=models.PROTECT, null=True, blank=True)
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.admin.first_name + " " +  self.admin.last_name
 
 
-class Subject(models.Model):
-    name = models.CharField(max_length=120)
-    staff = models.ForeignKey(Staff,on_delete=models.CASCADE,)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Attendance(models.Model):
-    session = models.ForeignKey(Session, on_delete=models.PROTECT)
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    offering = models.ForeignKey('academics.SubjectOffering', on_delete=models.PROTECT)
     date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -179,7 +151,7 @@ class NotificationStudent(models.Model):
 
 class StudentResult(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    offering = models.ForeignKey('academics.SubjectOffering', on_delete=models.PROTECT)
     test = models.FloatField(default=0)
     exam = models.FloatField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
