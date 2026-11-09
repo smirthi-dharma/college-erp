@@ -1,6 +1,6 @@
 # Fast teacher attendance + 75% shortage warning (pilot item 4): design and acceptance checks
 
-Status: PROPOSED, nothing built. QR / geofence attendance is dropped from the pilot (Smirthi, 2026-11-09): a rotating
+Status: APPROVED 2026-11-09 (defaults: on-duty counts as present, 3-day edit window, warn <80% / shortage <75%, all to be confirmed with faculty) plus changes A1-A5 below. Building. QR / geofence attendance is dropped from the pilot (Smirthi, 2026-11-09): a rotating
 code can be screenshotted to a friend, needs a working phone for every student, and GPS can be faked. Teacher-marked
 attendance meets the real goal: under 30 seconds per class on a cheap Android phone.
 
@@ -83,8 +83,29 @@ Migration and regression
 Out of scope here: WhatsApp absence digest (item 7), timetable and holidays, offline marking, leave-request approval linking
 to attendance, biometric or QR check-in, a mobile app (the page is mobile-first web).
 
-## Decisions needed from Smirthi
-1. **On-duty counts as present for the 75%?** Recommended yes (common practice), changeable per Regulation.
-2. **Teacher edit window:** recommended 3 days, then college admin only. Faculty may want longer; it is a setting.
-3. **Warning band:** recommended warn below 80% and shortage below 75% (the 75% is the usual university rule; please confirm
-   the 80% early-warning figure and the 75% with your faculty, the code reads both from the rule).
+## Changes approved 2026-11-09 (these add to or replace the checks above)
+
+A1. **Per-subject vs overall.** `AttendanceRule.basis` = `per_subject` (default) or `overall`. Per-subject: the OK/WARNING/SHORTAGE
+    status is computed for each offering separately, and a student is in shortage if any subject is. Overall: one percentage across
+    all of the student's offerings. Reports, the student page and `shortage_students()` all follow the setting. (Check 9 is run for both.)
+A2. **Condonable band and Condonation record.** `AttendanceRule.condonable_percent` (default 65; set equal to the required
+    percentage to disable). A student below the required percentage but at or above the condonable percentage may be condoned.
+    A `Condonation` (student, subject or overall, reason, percentage at approval, approved by, approved at; revoked by/at) can be
+    created **only by the college admin**, only while the student is inside the band for that scope, once at a time per scope
+    (database constraint), and is revocable. A condoned student shows as CONDONED (not SHORTAGE) with the record visible; nobody
+    below the band can be condoned. Creating and revoking are audited. Teachers cannot see or create condonations.
+A3. **On-duty needs review.** On-duty marked by a teacher is flagged `needs_review`; the college admin has a review queue
+    (approve keeps it; reject turns it into absent). While pending it counts as present (provisional) and shows a flag; rejected
+    ones count as absent. On-duty marked by the college admin needs no review. Every review decision is audited.
+A4. **A failed submit loses nothing and a retry cannot duplicate.** The page sends a one-time submission key with the form. If the
+    save fails (server error, validation error, lost connection) nothing is half-saved (one transaction) and the page re-renders
+    with every tap preserved; in the browser the taps are also kept as a local draft until the save succeeds. Resubmitting with the
+    same key, or double-tapping, saves exactly once (unique constraints plus the key; tested by retrying after a forced failure
+    and by submitting twice). The browser draft is verified by hand, not by a unit test.
+A5. **Substitute for one class on one date.** The college admin can assign a substitute teacher for one offering on one date
+    (and period). For that class only the substitute may take or edit it: the regular teacher gets 403 for it, other teachers 403, the
+    college admin can still edit (audited). The substitute sees that one class on that one date and nothing else of the offering
+    (not other dates, not marks). The assignment is audited and removable by the college admin.
+
+## Decisions (closed)
+Defaults approved; the 75% / 80% / 65% figures and the 3-day window are settings to confirm with faculty later.
