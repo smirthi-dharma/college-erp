@@ -19,54 +19,35 @@ logger = logging.getLogger(__name__)
 
 @role_required(HOD)
 def admin_home(request):
+    from academics.models import Enrolment, Programme, Subject, SubjectOffering
     total_staff = Staff.objects.all().count()
     total_students = Student.objects.all().count()
-    subjects = Subject.objects.all()
-    total_subject = subjects.count()
-    total_course = Course.objects.all().count()
-    attendance_list = []
-    subject_list = []
-    for subject in subjects:
-        attendance_count = Attendance.objects.filter(subject=subject).count()
-        subject_list.append(subject.name[:7])
-        attendance_list.append(attendance_count)
+    total_subject = Subject.objects.count()
+    total_course = Programme.objects.count()
 
-    # Total Subjects and students in Each Course
-    course_all = Course.objects.all()
-    course_name_list = []
-    subject_count_list = []
-    student_count_list_in_course = []
+    offering_list, attendance_list, student_count_list_in_subject = [], [], []
+    for offering in SubjectOffering.objects.select_related('subject', 'section__batch')[:30]:
+        offering_list.append(offering.subject.code[:7])
+        attendance_list.append(Attendance.objects.filter(offering=offering).count())
+        student_count_list_in_subject.append(
+            Enrolment.objects.filter(offering=offering, status=Enrolment.ACTIVE).count())
 
-    for course in course_all:
-        subjects = Subject.objects.filter(course_id=course.id).count()
-        students = Student.objects.filter(course_id=course.id).count()
-        course_name_list.append(course.name)
-        subject_count_list.append(subjects)
-        student_count_list_in_course.append(students)
-    
-    subject_all = Subject.objects.all()
-    subject_list = []
-    student_count_list_in_subject = []
-    for subject in subject_all:
-        course = Course.objects.get(id=subject.course.id)
-        student_count = Student.objects.filter(course_id=course.id).count()
-        subject_list.append(subject.name)
-        student_count_list_in_subject.append(student_count)
-
+    programme_name_list, subject_count_list, student_count_list_in_course = [], [], []
+    for programme in Programme.objects.all():
+        programme_name_list.append(programme.name)
+        subject_count_list.append(Subject.objects.filter(programme=programme).count())
+        student_count_list_in_course.append(Student.objects.filter(section__batch__programme=programme).count())
 
     # For Students
-    student_attendance_present_list=[]
-    student_attendance_leave_list=[]
-    student_name_list=[]
-
-    students = Student.objects.all()
-    for student in students:
-        
+    student_attendance_present_list = []
+    student_attendance_leave_list = []
+    student_name_list = []
+    for student in Student.objects.select_related('admin'):
         attendance = AttendanceReport.objects.filter(student_id=student.id, status=True).count()
         absent = AttendanceReport.objects.filter(student_id=student.id, status=False).count()
         leave = LeaveReportStudent.objects.filter(student_id=student.id, status=1).count()
         student_attendance_present_list.append(attendance)
-        student_attendance_leave_list.append(leave+absent)
+        student_attendance_leave_list.append(leave + absent)
         student_name_list.append(student.admin.first_name)
 
     context = {
@@ -75,15 +56,14 @@ def admin_home(request):
         'total_staff': total_staff,
         'total_course': total_course,
         'total_subject': total_subject,
-        'subject_list': js_json(subject_list),
+        'subject_list': js_json(offering_list),
         'attendance_list': js_json(attendance_list),
         'student_attendance_present_list': js_json(student_attendance_present_list),
         'student_attendance_leave_list': js_json(student_attendance_leave_list),
         "student_name_list": js_json(student_name_list),
         "student_count_list_in_subject": js_json(student_count_list_in_subject),
         "student_count_list_in_course": js_json(student_count_list_in_course),
-        "course_name_list": js_json(course_name_list),
-
+        "course_name_list": js_json(programme_name_list),
     }
     return render(request, 'hod_template/home_content.html', context)
 
@@ -100,7 +80,7 @@ def add_staff(request):
             email = form.cleaned_data.get('email')
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password')
-            course = form.cleaned_data.get('course')
+            department = form.cleaned_data.get('department')
             passport = request.FILES.get('profile_pic')
             fs = default_storage
             filename = fs.save(passport.name, passport)
@@ -110,8 +90,9 @@ def add_staff(request):
                     email=email, password=password, user_type=2, first_name=first_name, last_name=last_name, profile_pic=passport_url)
                 user.gender = gender
                 user.address = address
-                user.staff.course = course
+                user.staff.department = department
                 user.save()
+                user.staff.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_staff'))
 
@@ -136,8 +117,7 @@ def add_student(request):
             email = student_form.cleaned_data.get('email')
             gender = student_form.cleaned_data.get('gender')
             password = student_form.cleaned_data.get('password')
-            course = student_form.cleaned_data.get('course')
-            session = student_form.cleaned_data.get('session')
+            section = student_form.cleaned_data.get('section')
             passport = request.FILES['profile_pic']
             fs = default_storage
             filename = fs.save(passport.name, passport)
@@ -147,9 +127,9 @@ def add_student(request):
                     email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
                 user.gender = gender
                 user.address = address
-                user.student.session = session
-                user.student.course = course
+                user.student.section = section
                 user.save()
+                user.student.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_student'))
             except Exception:
@@ -158,59 +138,6 @@ def add_student(request):
         else:
             messages.error(request, "Could Not Add: ")
     return render(request, 'hod_template/add_student_template.html', context)
-
-
-@role_required(HOD)
-def add_course(request):
-    form = CourseForm(request.POST or None)
-    context = {
-        'form': form,
-        'page_title': 'Add Course'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            name = form.cleaned_data.get('name')
-            try:
-                course = Course()
-                course.name = name
-                course.save()
-                messages.success(request, "Successfully Added")
-                return redirect(reverse('add_course'))
-            except Exception:
-                messages.error(request, "Could Not Add")
-        else:
-            messages.error(request, "Could Not Add")
-    return render(request, 'hod_template/add_course_template.html', context)
-
-
-@role_required(HOD)
-def add_subject(request):
-    form = SubjectForm(request.POST or None)
-    context = {
-        'form': form,
-        'page_title': 'Add Subject'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            name = form.cleaned_data.get('name')
-            course = form.cleaned_data.get('course')
-            staff = form.cleaned_data.get('staff')
-            try:
-                subject = Subject()
-                subject.name = name
-                subject.staff = staff
-                subject.course = course
-                subject.save()
-                messages.success(request, "Successfully Added")
-                return redirect(reverse('add_subject'))
-
-            except Exception:
-                logger.exception('HoD action failed')
-                messages.error(request, "Could Not Add ")
-        else:
-            messages.error(request, "Fill Form Properly")
-
-    return render(request, 'hod_template/add_subject_template.html', context)
 
 
 @role_required(HOD)
@@ -234,26 +161,6 @@ def manage_student(request):
 
 
 @role_required(HOD)
-def manage_course(request):
-    courses = Course.objects.all()
-    context = {
-        'courses': courses,
-        'page_title': 'Manage Courses'
-    }
-    return render(request, "hod_template/manage_course.html", context)
-
-
-@role_required(HOD)
-def manage_subject(request):
-    subjects = Subject.objects.all()
-    context = {
-        'subjects': subjects,
-        'page_title': 'Manage Subjects'
-    }
-    return render(request, "hod_template/manage_subject.html", context)
-
-
-@role_required(HOD)
 def edit_staff(request, staff_id):
     staff = get_object_or_404(Staff, id=staff_id)
     form = StaffForm(request.POST or None, instance=staff)
@@ -271,7 +178,7 @@ def edit_staff(request, staff_id):
             email = form.cleaned_data.get('email')
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password') or None
-            course = form.cleaned_data.get('course')
+            department = form.cleaned_data.get('department')
             passport = request.FILES.get('profile_pic') or None
             try:
                 user = CustomUser.objects.get(id=staff.admin.id)
@@ -288,7 +195,7 @@ def edit_staff(request, staff_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
-                staff.course = course
+                staff.department = department
                 user.save()
                 staff.save()
                 messages.success(request, "Successfully Updated")
@@ -319,8 +226,7 @@ def edit_student(request, student_id):
             email = form.cleaned_data.get('email')
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password') or None
-            course = form.cleaned_data.get('course')
-            session = form.cleaned_data.get('session')
+            section = form.cleaned_data.get('section')
             passport = request.FILES.get('profile_pic') or None
             try:
                 user = CustomUser.objects.get(id=student.admin.id)
@@ -335,10 +241,9 @@ def edit_student(request, student_id):
                     user.set_password(password)
                 user.first_name = first_name
                 user.last_name = last_name
-                student.session = session
                 user.gender = gender
                 user.address = address
-                student.course = course
+                student.section = section
                 user.save()
                 student.save()
                 messages.success(request, "Successfully Updated")
@@ -349,111 +254,6 @@ def edit_student(request, student_id):
         else:
             messages.error(request, "Please Fill Form Properly!")
     return render(request, "hod_template/edit_student_template.html", context)
-
-
-@role_required(HOD)
-def edit_course(request, course_id):
-    instance = get_object_or_404(Course, id=course_id)
-    form = CourseForm(request.POST or None, instance=instance)
-    context = {
-        'form': form,
-        'course_id': course_id,
-        'page_title': 'Edit Course'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            name = form.cleaned_data.get('name')
-            try:
-                course = Course.objects.get(id=course_id)
-                course.name = name
-                course.save()
-                messages.success(request, "Successfully Updated")
-            except Exception:
-                messages.error(request, "Could Not Update")
-        else:
-            messages.error(request, "Could Not Update")
-
-    return render(request, 'hod_template/edit_course_template.html', context)
-
-
-@role_required(HOD)
-def edit_subject(request, subject_id):
-    instance = get_object_or_404(Subject, id=subject_id)
-    form = SubjectForm(request.POST or None, instance=instance)
-    context = {
-        'form': form,
-        'subject_id': subject_id,
-        'page_title': 'Edit Subject'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            name = form.cleaned_data.get('name')
-            course = form.cleaned_data.get('course')
-            staff = form.cleaned_data.get('staff')
-            try:
-                subject = Subject.objects.get(id=subject_id)
-                subject.name = name
-                subject.staff = staff
-                subject.course = course
-                subject.save()
-                messages.success(request, "Successfully Updated")
-                return redirect(reverse('edit_subject', args=[subject_id]))
-            except Exception:
-                logger.exception('HoD action failed')
-                messages.error(request, "Could Not Add ")
-        else:
-            messages.error(request, "Fill Form Properly")
-    return render(request, 'hod_template/edit_subject_template.html', context)
-
-
-@role_required(HOD)
-def add_session(request):
-    form = SessionForm(request.POST or None)
-    context = {'form': form, 'page_title': 'Add Session'}
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                form.save()
-                messages.success(request, "Session Created")
-                return redirect(reverse('add_session'))
-            except Exception:
-                logger.exception('HoD action failed')
-                messages.error(request, 'Could Not Add ')
-        else:
-            messages.error(request, 'Fill Form Properly ')
-    return render(request, "hod_template/add_session_template.html", context)
-
-
-@role_required(HOD)
-def manage_session(request):
-    sessions = Session.objects.all()
-    context = {'sessions': sessions, 'page_title': 'Manage Sessions'}
-    return render(request, "hod_template/manage_session.html", context)
-
-
-@role_required(HOD)
-def edit_session(request, session_id):
-    instance = get_object_or_404(Session, id=session_id)
-    form = SessionForm(request.POST or None, instance=instance)
-    context = {'form': form, 'session_id': session_id,
-               'page_title': 'Edit Session'}
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                form.save()
-                messages.success(request, "Session Updated")
-                return redirect(reverse('edit_session', args=[session_id]))
-            except Exception:
-                logger.exception('HoD action failed')
-                messages.error(
-                    request, "Session Could Not Be Updated ")
-                return render(request, "hod_template/edit_session_template.html", context)
-        else:
-            messages.error(request, "Invalid Form Submitted ")
-            return render(request, "hod_template/edit_session_template.html", context)
-
-    else:
-        return render(request, "hod_template/edit_session_template.html", context)
 
 
 @role_required(HOD)
@@ -563,24 +363,19 @@ def view_student_leave(request):
 
 @role_required(HOD)
 def admin_view_attendance(request):
-    subjects = Subject.objects.all()
-    sessions = Session.objects.all()
+    from academics.models import SubjectOffering
     context = {
-        'subjects': subjects,
-        'sessions': sessions,
+        'offerings': SubjectOffering.objects.select_related('subject', 'section__batch', 'term'),
         'page_title': 'View Attendance'
     }
-
     return render(request, "hod_template/admin_view_attendance.html", context)
 
 
 @role_required(HOD)
 @require_POST
 def get_admin_attendance(request):
-    subject = get_object_or_404(Subject, id=request.POST.get('subject'))
-    session = get_object_or_404(Session, id=request.POST.get('session'))
     attendance = get_object_or_404(
-        Attendance, id=request.POST.get('attendance_date_id'), session=session, subject=subject)
+        Attendance, id=request.POST.get('attendance_date_id'), offering_id=request.POST.get('offering'))
     json_data = [
         {"status": str(report.status), "name": str(report.student)}
         for report in AttendanceReport.objects.filter(attendance=attendance)
@@ -687,38 +482,3 @@ def delete_student(request, student_id):
     return redirect(reverse('manage_student'))
 
 
-@role_required(HOD)
-@require_POST
-def delete_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
-    try:
-        course.delete()
-        messages.success(request, "Course deleted successfully!")
-    except Exception:
-        logger.exception('HoD action failed')
-        messages.error(
-            request, "Sorry, some students are assigned to this course already. Kindly change the affected student course and try again")
-    return redirect(reverse('manage_course'))
-
-
-@role_required(HOD)
-@require_POST
-def delete_subject(request, subject_id):
-    subject = get_object_or_404(Subject, id=subject_id)
-    subject.delete()
-    messages.success(request, "Subject deleted successfully!")
-    return redirect(reverse('manage_subject'))
-
-
-@role_required(HOD)
-@require_POST
-def delete_session(request, session_id):
-    session = get_object_or_404(Session, id=session_id)
-    try:
-        session.delete()
-        messages.success(request, "Session deleted successfully!")
-    except Exception:
-        logger.exception('HoD action failed')
-        messages.error(
-            request, "There are students assigned to this session. Please move them to another session.")
-    return redirect(reverse('manage_session'))

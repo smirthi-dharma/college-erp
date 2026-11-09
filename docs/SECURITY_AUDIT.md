@@ -65,6 +65,16 @@ no entry; a failure to log stops the change). Design choices:
    arrive with the departments model.
 9. Not covered by tests yet: Celery jobs, caches and backups (they do not exist yet).
 
+## Academic structure (feature `academics`, 2026-11-09)
+
+New tenant app `academics`: Department, Programme, Regulation, Batch, Section, Subject, AcademicTerm,
+SubjectOffering, Enrolment. The old Course/Session/Subject models and their pages are gone (data migrated by
+`main_app` 0005-0007, tested on a legacy dataset). All new pages are HoD-only; the audit log covers every model
+(`AUDIT_APPS`). Staff and students are scoped by **enrolment**, not by course: a teacher can take attendance and enter
+marks only for students actively enrolled in an offering they teach (this also covers arrear students), and a student
+sees only offerings they are or were enrolled in. Withdrawal keeps the row, so history is never lost.
+Open: finer "HoD of one department only" rule; the Django admin lockdown and 2FA (next PR).
+
 ## Rules for new code
 
 - Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails.

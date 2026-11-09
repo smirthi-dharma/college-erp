@@ -60,35 +60,36 @@ class OrmIsolationTests(TwoCollegeTestCase):
                 self.assertEqual(CustomUser.objects.get(email='same@x.in').last_name, last)
 
     def test_academic_data_is_invisible_across_colleges(self):
-        from main_app.models import Course, Student
+        from academics.models import Department
+        from main_app.models import Student
         self.make_user(self.college_a, 's@a.in', 3, 'Stu', 'A')
         with tenant_context(self.college_a):
-            Course.objects.create(name='A-only course')
+            Department.objects.create(name='A-only dept', code='AONLY')
         with tenant_context(self.college_b):
-            self.assertEqual(Course.objects.count(), 0)
+            self.assertEqual(Department.objects.count(), 0)
             self.assertEqual(Student.objects.count(), 0)
 
     def test_deleting_in_one_college_does_not_touch_the_other(self):
-        from main_app.models import Course
+        from academics.models import Department
         for college in (self.college_a, self.college_b):
             with tenant_context(college):
-                Course.objects.create(name='Shared name')
+                Department.objects.create(name='Shared name', code='SHARED')
         with tenant_context(self.college_a):
-            Course.objects.all().delete()
+            Department.objects.all().delete()
         with tenant_context(self.college_b):
-            self.assertEqual(Course.objects.count(), 1)
+            self.assertEqual(Department.objects.count(), 1)
 
     def test_primary_keys_are_independent_per_college(self):
         # Each college has its own table and sequence, so an id issued in A
         # means nothing in B: a row created in A is not found by id in B.
-        from main_app.models import Course
+        from academics.models import Department
         with tenant_context(self.college_a):
-            a1 = Course.objects.create(name='A1')
-            a2 = Course.objects.create(name='A2')
+            a1 = Department.objects.create(name='A1', code='A1')
+            a2 = Department.objects.create(name='A2', code='A2')
         with tenant_context(self.college_b):
-            Course.objects.create(name='B1')
-            self.assertFalse(Course.objects.filter(name__in=['A1', 'A2']).exists())
-            self.assertFalse(Course.objects.filter(pk__in=[a1.pk, a2.pk], name__startswith='A').exists())
+            Department.objects.create(name='B1', code='B1')
+            self.assertFalse(Department.objects.filter(name__in=['A1', 'A2']).exists())
+            self.assertFalse(Department.objects.filter(pk__in=[a1.pk, a2.pk], name__startswith='A').exists())
 
 
 class HttpIsolationTests(TwoCollegeTestCase):

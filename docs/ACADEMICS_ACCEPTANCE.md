@@ -1,6 +1,6 @@
 # Academics models (pilot item 1): design and acceptance checks
 
-Status: APPROVED by Smirthi on 2026-11-09 with the additions below. Building.
+Status: APPROVED by Smirthi on 2026-11-09 with the additions below. Items 1-18 are BUILT and tested (`academics/tests/`). Items 19-21 (admin lockdown, 2FA, admin audit) are a separate feature branch and PR (`feat/admin-2fa`), NOT built yet.
 
 ## Design
 
@@ -32,7 +32,7 @@ Replacing the old models:
 Data integrity
 1. Each unique rule in the table above is enforced by the database (duplicate -> IntegrityError), not only by forms.
 2. Cross-links are validated: a Batch with a regulation of another programme, a Subject whose semester exceeds the programme duration, an Offering whose section's regulation differs from the subject's, and an Enrolment of a student from another section are all refused (ValidationError on `full_clean`, and the HoD forms show the message).
-3. Deleting a Department, Programme, Regulation, Batch, Section, Subject, Offering or Student that is still referenced is refused (PROTECT); nothing is silently cascaded except an offering's own enrolments and attendance when the offering is deleted by the HoD through the POST delete.
+3. Deleting a Department, Programme, Regulation, Batch, Section, Subject or Offering that is still referenced is refused (PROTECT), so attendance, marks and enrolments can never vanish by accident. Deleting a student (erasure request) removes their enrolments, attendance and marks with them; the audit log keeps the record.
 4. Credits and semester reject negative or out-of-range values.
 
 Migration
@@ -43,7 +43,7 @@ Tenant isolation (extend the existing 17)
 7. College A's departments, programmes, regulations, batches, sections, subjects, offerings and enrolments are invisible from College B (ORM and HTTP), and the same codes can exist in both colleges.
 
 Permissions (extend the existing access-control tests)
-8. Every new view has `@role_required`; the policy test lists them. HoD manages the structure; staff can read it and see only their own offerings; students see only their own enrolments; anonymous gets redirected.
+8. Every new view has `@role_required`; the policy test lists them. Only the HoD can open the structure pages; staff see only their own offerings (in their attendance and marks pages); students see only their own enrolments; anonymous gets redirected.
 9. A staff member cannot take attendance, read results or write results for an offering they do not teach, or for a student not enrolled in it. A student cannot read another student's enrolments or marks.
 10. All new state changes are POST with CSRF; no state change over GET.
 
@@ -59,7 +59,7 @@ Out of scope here: CO/PO models, timetable, fee structures, bulk Excel import (n
 
 Enrolment rules
 13. Creating a CORE offering enrols every active student of its section (source=auto). Creating an ELECTIVE offering enrols nobody.
-14. Electives: HoD assigns students one by one, or bulk from an Excel list (.xlsx; columns: student email or roll number). The import is all-or-nothing per file, reports each bad row, ignores nothing silently, and is idempotent (re-upload creates no duplicates).
+14. Electives: HoD assigns students one by one, or bulk from an Excel list (.xlsx; column `email`; roll numbers arrive with the bulk-import feature). The import is all-or-nothing per file, reports each bad row, ignores nothing silently, and is idempotent (re-upload creates no duplicates).
 15. A student joining a section later (lateral entry) is auto-enrolled in that section's core offerings for the current term.
 16. A section transfer withdraws the student from the old section's offerings (status=withdrawn, withdrawn_on set) and enrols them in the new section's core offerings. Their attendance and marks rows for the old offerings are untouched and still readable (counts identical before and after).
 17. A student outside the section can be enrolled by the HoD (arrear/repeat). The model and form allow it; the pilot does not use it.

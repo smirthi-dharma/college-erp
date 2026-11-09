@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .access import STAFF, current_staff, role_required, subject_for_staff
+from .access import STAFF, current_staff, offering_for_staff, role_required, students_of_offering
 from .forms import *
 from .models import *
 from .utils import js_json
@@ -19,33 +19,33 @@ from .utils import js_json
 logger = logging.getLogger(__name__)
 
 
-def _students_of(subject):
-    """Students a teacher may handle for this subject: those enrolled in the subject's course."""
-    return Student.objects.filter(course_id=subject.course_id)
+def _require_student_in_offering(student, offering):
+    if not students_of_offering(offering).filter(pk=student.pk).exists():
+        raise PermissionDenied('This student is not enrolled in the offering.')
 
 
-def _require_student_in_subject(student, subject):
-    if student.course_id != subject.course_id:
-        raise PermissionDenied('This student is not in the subject\'s course.')
+def _own_offerings(staff):
+    from academics.models import SubjectOffering
+    return SubjectOffering.objects.filter(faculty=staff).select_related('subject', 'section__batch', 'term')
 
 
 @role_required(STAFF)
 def staff_home(request):
+    from academics.models import Enrolment
     staff = current_staff(request)
-    total_students = Student.objects.filter(course=staff.course).count()
+    offerings = _own_offerings(staff)
+    total_students = Enrolment.objects.filter(
+        offering__in=offerings, status=Enrolment.ACTIVE).values('student').distinct().count()
     total_leave = LeaveReportStaff.objects.filter(staff=staff).count()
-    subjects = Subject.objects.filter(staff=staff)
-    total_subject = subjects.count()
-    attendance_list = Attendance.objects.filter(subject__in=subjects)
-    total_attendance = attendance_list.count()
+    total_subject = offerings.count()
+    total_attendance = Attendance.objects.filter(offering__in=offerings).count()
     attendance_list = []
     subject_list = []
-    for subject in subjects:
-        attendance_count = Attendance.objects.filter(subject=subject).count()
-        subject_list.append(subject.name)
-        attendance_list.append(attendance_count)
+    for offering in offerings:
+        subject_list.append(offering.subject.name)
+        attendance_list.append(Attendance.objects.filter(offering=offering).count())
     context = {
-        'page_title': 'Staff Panel - ' + str(staff.admin.first_name) + ' ' + str(staff.admin.last_name[0]) + '' + ' (' + str(staff.course) + ')',
+        'page_title': 'Staff Panel - ' + str(staff.admin.first_name) + ' ' + str(staff.admin.last_name[:1]) + ' (' + str(staff.department or 'No department') + ')',
         'total_students': total_students,
         'total_attendance': total_attendance,
         'total_leave': total_leave,
@@ -58,33 +58,26 @@ def staff_home(request):
 
 @role_required(STAFF)
 def staff_take_attendance(request):
-    staff = current_staff(request)
-    subjects = Subject.objects.filter(staff_id=staff)
-    sessions = Session.objects.all()
     context = {
-        'subjects': subjects,
-        'sessions': sessions,
+        'offerings': _own_offerings(current_staff(request)),
         'page_title': 'Take Attendance'
     }
-
     return render(request, 'staff_template/staff_take_attendance.html', context)
 
 
 @role_required(STAFF)
 @require_POST
 def get_students(request):
-    subject = subject_for_staff(request, request.POST.get('subject'))
-    session = get_object_or_404(Session, id=request.POST.get('session'))
-    students = _students_of(subject).filter(session=session)
-    student_data = [{"id": s.id, "name": s.admin.last_name + " " + s.admin.first_name} for s in students]
+    offering = offering_for_staff(request, request.POST.get('offering'))
+    student_data = [{"id": s.id, "name": s.admin.last_name + " " + s.admin.first_name}
+                    for s in students_of_offering(offering).select_related('admin')]
     return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
 
 
 @role_required(STAFF)
 @require_POST
 def save_attendance(request):
-    subject = subject_for_staff(request, request.POST.get('subject'))
-    session = get_object_or_404(Session, id=request.POST.get('session'))
+    offering = offering_for_staff(request, request.POST.get('offering'))
     try:
         day = datetime.strptime(request.POST.get('date', ''), '%Y-%m-%d').date()
         entries = json.loads(request.POST.get('student_ids', ''))
@@ -93,10 +86,10 @@ def save_attendance(request):
     except (TypeError, ValueError):
         return HttpResponse('Invalid attendance data', status=400)
     with transaction.atomic():
-        attendance = Attendance.objects.create(session=session, subject=subject, date=day)
+        attendance = Attendance.objects.create(offering=offering, date=day)
         for entry in entries:
             student = get_object_or_404(Student, id=entry.get('id'))
-            _require_student_in_subject(student, subject)
+            _require_student_in_offering(student, offering)
             AttendanceReport.objects.create(student=student, attendance=attendance,
                                             status=bool(entry.get('status')))
     return HttpResponse("OK")
@@ -104,21 +97,16 @@ def save_attendance(request):
 
 @role_required(STAFF)
 def staff_update_attendance(request):
-    staff = current_staff(request)
-    subjects = Subject.objects.filter(staff_id=staff)
-    sessions = Session.objects.all()
     context = {
-        'subjects': subjects,
-        'sessions': sessions,
+        'offerings': _own_offerings(current_staff(request)),
         'page_title': 'Update Attendance'
     }
-
     return render(request, 'staff_template/staff_update_attendance.html', context)
 
 
 def _own_attendance(request, attendance_id):
     attendance = get_object_or_404(Attendance, id=attendance_id)
-    subject_for_staff(request, attendance.subject_id)  # 403 if it is another teacher's subject
+    offering_for_staff(request, attendance.offering_id)  # 403 if it is another teacher's offering
     return attendance
 
 
@@ -266,17 +254,14 @@ def staff_view_notification(request):
 @role_required(STAFF)
 def staff_add_result(request):
     staff = current_staff(request)
-    subjects = Subject.objects.filter(staff=staff)
-    sessions = Session.objects.all()
     context = {
         'page_title': 'Result Upload',
-        'subjects': subjects,
-        'sessions': sessions
+        'offerings': _own_offerings(staff),
     }
     if request.method == 'POST':
-        subject = subject_for_staff(request, request.POST.get('subject'))
+        offering = offering_for_staff(request, request.POST.get('offering'))
         student = get_object_or_404(Student, id=request.POST.get('student_list'))
-        _require_student_in_subject(student, subject)
+        _require_student_in_offering(student, offering)
         try:
             test = float(request.POST.get('test'))
             exam = float(request.POST.get('exam'))
@@ -284,7 +269,7 @@ def staff_add_result(request):
             messages.warning(request, "Marks must be numbers")
             return render(request, "staff_template/staff_add_result.html", context)
         _, created = StudentResult.objects.update_or_create(
-            student=student, subject=subject, defaults={'test': test, 'exam': exam})
+            student=student, offering=offering, defaults={'test': test, 'exam': exam})
         messages.success(request, "Scores Saved" if created else "Scores Updated")
     return render(request, "staff_template/staff_add_result.html", context)
 
@@ -292,10 +277,10 @@ def staff_add_result(request):
 @role_required(STAFF)
 @require_POST
 def fetch_student_result(request):
-    subject = subject_for_staff(request, request.POST.get('subject'))
+    offering = offering_for_staff(request, request.POST.get('offering'))
     student = get_object_or_404(Student, id=request.POST.get('student'))
-    _require_student_in_subject(student, subject)
-    result = StudentResult.objects.filter(student=student, subject=subject).first()
+    _require_student_in_offering(student, offering)
+    result = StudentResult.objects.filter(student=student, offering=offering).first()
     if result is None:
         return HttpResponse('False')
     return HttpResponse(json.dumps({'exam': result.exam, 'test': result.test}))
