@@ -2,7 +2,7 @@
 
 Every view must declare its policy explicitly:
 
-* ``@role_required(HOD, STAFF)``  - only logged-in users with one of these roles
+* ``@role_required(COLLEGE_ADMIN, STAFF)``  - only logged-in users with one of these roles
 * ``@public_view``               - reachable without logging in (login page, etc.)
 
 A view with neither is refused by ``LoginCheckMiddleWare`` (deny by default), and a
@@ -17,10 +17,10 @@ from django.urls import reverse
 
 from .models import CustomUser, Staff
 
-HOD, STAFF, STUDENT = CustomUser.HOD, CustomUser.STAFF, CustomUser.STUDENT
-ALL_ROLES = (HOD, STAFF, STUDENT)
+COLLEGE_ADMIN, STAFF, STUDENT = CustomUser.COLLEGE_ADMIN, CustomUser.STAFF, CustomUser.STUDENT
+ALL_ROLES = (COLLEGE_ADMIN, STAFF, STUDENT)
 
-_HOME = {HOD: 'admin_home', STAFF: 'staff_home', STUDENT: 'student_home'}
+_HOME = {COLLEGE_ADMIN: 'admin_home', STAFF: 'staff_home', STUDENT: 'student_home'}
 
 
 def home_url_for(user):
@@ -71,7 +71,7 @@ def offering_for_staff(request, offering_id):
 def offering_for_user(request, offering_id):
     """HoD may use any offering; staff only their own."""
     from academics.models import SubjectOffering
-    if request.user.user_type == HOD:
+    if request.user.user_type == COLLEGE_ADMIN:
         return get_object_or_404(SubjectOffering, id=offering_id)
     return offering_for_staff(request, offering_id)
 

@@ -23,7 +23,7 @@ class CustomUserManager(UserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("user_type", CustomUser.HOD)
+        extra_fields.setdefault("user_type", CustomUser.COLLEGE_ADMIN)
 
         if not (extra_fields["is_staff"] and extra_fields["is_superuser"]):
             raise ValueError("Superuser must have is_staff=True and is_superuser=True.")
@@ -32,8 +32,9 @@ class CustomUserManager(UserManager):
 
 class CustomUser(AbstractUser):
     # Stored as strings; compare with these constants, never with bare 1/2/3.
-    HOD, STAFF, STUDENT = "1", "2", "3"
-    USER_TYPE = ((HOD, "HOD"), (STAFF, "Staff"), (STUDENT, "Student"))
+    # "1" is the college-wide administrator (it was called HOD in the inherited code; the stored value is unchanged).
+    COLLEGE_ADMIN, STAFF, STUDENT = "1", "2", "3"
+    USER_TYPE = ((COLLEGE_ADMIN, "College admin"), (STAFF, "Staff"), (STUDENT, "Student"))
     GENDER = [("M", "Male"), ("F", "Female")]
     
     
@@ -163,7 +164,7 @@ def create_user_profile(sender, instance, created, raw=False, **kwargs):
     """Give every new user the profile row matching their role."""
     if raw or not created:
         return
-    profile_model = {CustomUser.HOD: Admin, CustomUser.STAFF: Staff, CustomUser.STUDENT: Student}.get(instance.user_type)
+    profile_model = {CustomUser.COLLEGE_ADMIN: Admin, CustomUser.STAFF: Staff, CustomUser.STUDENT: Student}.get(instance.user_type)
     if profile_model is not None:
         profile_model.objects.get_or_create(admin=instance)
 # todos

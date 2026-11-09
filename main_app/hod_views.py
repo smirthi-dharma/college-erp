@@ -8,7 +8,7 @@ from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .access import HOD, role_required
+from .access import COLLEGE_ADMIN, role_required
 from .forms import *
 from .models import *
 from .notifications import send_push
@@ -17,7 +17,7 @@ from .utils import js_json
 logger = logging.getLogger(__name__)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def admin_home(request):
     from academics.models import Enrolment, Programme, Subject, SubjectOffering
     total_staff = Staff.objects.all().count()
@@ -68,7 +68,7 @@ def admin_home(request):
     return render(request, 'hod_template/home_content.html', context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def add_staff(request):
     form = StaffForm(request.POST or None, request.FILES or None)
     context = {'form': form, 'page_title': 'Add Staff'}
@@ -105,7 +105,7 @@ def add_staff(request):
     return render(request, 'hod_template/add_staff_template.html', context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def add_student(request):
     student_form = StudentForm(request.POST or None, request.FILES or None)
     context = {'form': student_form, 'page_title': 'Add Student'}
@@ -140,7 +140,7 @@ def add_student(request):
     return render(request, 'hod_template/add_student_template.html', context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def manage_staff(request):
     allStaff = CustomUser.objects.filter(user_type=2)
     context = {
@@ -150,7 +150,7 @@ def manage_staff(request):
     return render(request, "hod_template/manage_staff.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def manage_student(request):
     students = CustomUser.objects.filter(user_type=3)
     context = {
@@ -160,7 +160,7 @@ def manage_student(request):
     return render(request, "hod_template/manage_student.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def edit_staff(request, staff_id):
     staff = get_object_or_404(Staff, id=staff_id)
     form = StaffForm(request.POST or None, instance=staff)
@@ -208,7 +208,7 @@ def edit_staff(request, staff_id):
     return render(request, "hod_template/edit_staff_template.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def edit_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)
     form = StudentForm(request.POST or None, instance=student)
@@ -256,7 +256,7 @@ def edit_student(request, student_id):
     return render(request, "hod_template/edit_student_template.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def check_email_availability(request):
     email = request.POST.get("email")
@@ -269,7 +269,7 @@ def check_email_availability(request):
         return HttpResponse(False)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def student_feedback_message(request):
     if request.method != 'POST':
         feedbacks = FeedbackStudent.objects.all()
@@ -290,7 +290,7 @@ def student_feedback_message(request):
             return HttpResponse(False)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def staff_feedback_message(request):
     if request.method != 'POST':
         feedbacks = FeedbackStaff.objects.all()
@@ -311,7 +311,7 @@ def staff_feedback_message(request):
             return HttpResponse(False)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def view_staff_leave(request):
     if request.method != 'POST':
         allLeave = LeaveReportStaff.objects.all()
@@ -336,7 +336,7 @@ def view_staff_leave(request):
             return HttpResponse(False)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def view_student_leave(request):
     if request.method != 'POST':
         allLeave = LeaveReportStudent.objects.all()
@@ -361,7 +361,7 @@ def view_student_leave(request):
             return HttpResponse(False)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def admin_view_attendance(request):
     from academics.models import SubjectOffering
     context = {
@@ -371,7 +371,7 @@ def admin_view_attendance(request):
     return render(request, "hod_template/admin_view_attendance.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def get_admin_attendance(request):
     attendance = get_object_or_404(
@@ -383,7 +383,7 @@ def get_admin_attendance(request):
     return JsonResponse(json.dumps(json_data), safe=False)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def admin_view_profile(request):
     admin = get_object_or_404(Admin, admin=request.user)
     form = AdminForm(request.POST or None, request.FILES or None,
@@ -420,7 +420,7 @@ def admin_view_profile(request):
     return render(request, "hod_template/admin_view_profile.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def admin_notify_staff(request):
     staff = CustomUser.objects.filter(user_type=2)
     context = {
@@ -430,7 +430,7 @@ def admin_notify_staff(request):
     return render(request, "hod_template/staff_notification.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def admin_notify_student(request):
     student = CustomUser.objects.filter(user_type=3)
     context = {
@@ -440,7 +440,7 @@ def admin_notify_student(request):
     return render(request, "hod_template/student_notification.html", context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def send_student_notification(request):
     student = get_object_or_404(Student, admin_id=request.POST.get('id'))
@@ -452,7 +452,7 @@ def send_student_notification(request):
     return HttpResponse("True")
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def send_staff_notification(request):
     staff = get_object_or_404(Staff, admin_id=request.POST.get('id'))
@@ -464,7 +464,7 @@ def send_staff_notification(request):
     return HttpResponse("True")
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def delete_staff(request, staff_id):
     staff = get_object_or_404(CustomUser, staff__id=staff_id)
@@ -473,7 +473,7 @@ def delete_staff(request, staff_id):
     return redirect(reverse('manage_staff'))
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def delete_student(request, student_id):
     student = get_object_or_404(CustomUser, student__id=student_id)

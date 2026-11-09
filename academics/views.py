@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from main_app.access import HOD, role_required
+from main_app.access import COLLEGE_ADMIN, role_required
 
 from . import models, services
 from .forms import FORMS, ElectiveImportForm, EnrolStudentForm
@@ -33,13 +33,13 @@ def _entry(key):
     return REGISTRY[key]
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def academics_home(request):
     items = [(key, REGISTRY[key][1]) for key in REGISTRY]
     return render(request, 'academics/home.html', {'items': items, 'page_title': 'Institution structure'})
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def academics_list(request, key):
     model, title, columns = _entry(key)
     rows = [{'obj': obj, 'cells': [getattr(obj, attr) for _, attr in columns]} for obj in model.objects.all()]
@@ -47,7 +47,7 @@ def academics_list(request, key):
     return render(request, 'academics/list.html', context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def academics_edit(request, key, pk=None):
     model, title, _ = _entry(key)
     instance = get_object_or_404(model, pk=pk) if pk else None
@@ -62,7 +62,7 @@ def academics_edit(request, key, pk=None):
     return render(request, 'academics/form.html', context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def academics_delete(request, key, pk):
     model, _, _ = _entry(key)
@@ -75,7 +75,7 @@ def academics_delete(request, key, pk):
     return redirect(reverse('academics_list', args=[key]))
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 def offering_enrolments(request, pk):
     offering = get_object_or_404(models.SubjectOffering.objects.select_related('subject', 'section', 'term', 'faculty__admin'), pk=pk)
     context = {
@@ -88,7 +88,7 @@ def offering_enrolments(request, pk):
     return render(request, 'academics/enrolments.html', context)
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def offering_enrol(request, pk):
     offering = get_object_or_404(models.SubjectOffering, pk=pk)
@@ -101,7 +101,7 @@ def offering_enrol(request, pk):
     return redirect(reverse('offering_enrolments', args=[pk]))
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def offering_withdraw(request, pk, enrolment_id):
     enrolment = get_object_or_404(models.Enrolment, pk=enrolment_id, offering_id=pk)
@@ -109,7 +109,7 @@ def offering_withdraw(request, pk, enrolment_id):
     return redirect(reverse('offering_enrolments', args=[pk]))
 
 
-@role_required(HOD)
+@role_required(COLLEGE_ADMIN)
 @require_POST
 def offering_import(request, pk):
     offering = get_object_or_404(models.SubjectOffering, pk=pk)

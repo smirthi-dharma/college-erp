@@ -89,7 +89,8 @@ Open: finer "HoD of one department only" rule; the Django admin lockdown and 2FA
 
 ## Rules for new code
 
-- Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails.
+- Every view gets `@role_required(...)` or `@public_view`. Without one the middleware returns 403 and the policy test fails. The test now walks every URL of the application (only the 2FA admin and Django's own auth/static views are exempt) and also pins the exact list of public pages, so a new page cannot be open to everyone by accident.
+- Roles: `COLLEGE_ADMIN` (stored "1", it was called HOD in the inherited code), `STAFF` ("2"), `STUDENT` ("3"). A scoped Head-of-department role comes later.
 - Look up objects through the user's scope (their subjects, their students, their college), never by raw id.
 - State changes are POST (or PUT/DELETE) with the CSRF token; never `@csrf_exempt`.
 - Use `save()` / `delete()`; not `update()`, `bulk_create()` or raw SQL, so the audit log sees the change.
