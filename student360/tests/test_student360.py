@@ -195,6 +195,7 @@ class ContentTests(Student360Base):
 
     def test_20_student_page_links_to_existing_pages(self):
         me = self.as_user(self.stud1).get('/students/me/').content.decode()
+        self.assertIn('/attendance/mine/', me)
         self.assertIn('/student/view/attendance/', me)
         self.assertEqual(self.as_user(self.stud1).get('/student/view/attendance/').status_code, 200)
         self.assertEqual(self.as_user(self.stud1).get('/student/view/profile/').status_code, 200)

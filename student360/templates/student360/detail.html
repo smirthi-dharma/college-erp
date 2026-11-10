@@ -67,6 +67,6 @@
       {% empty %}<tr><td colspan="3">No recorded changes.</td></tr>{% endfor %}
     </tbody></table></div></div>{% endif %}
 
-  {% if role == '3' %}<p><a href="{% url 'student_view_attendance' %}">My attendance</a> &middot; <a href="{% url 'student_view_profile' %}">Edit my profile</a></p>{% endif %}
+  {% if role == '3' %}<p><a href="{% url 'my_attendance' %}">Attendance summary</a> &middot; <a href="{% url 'student_view_attendance' %}">Attendance by date</a> &middot; <a href="{% url 'student_view_profile' %}">Edit my profile</a></p>{% endif %}
 </div></section>
 {% endblock content %}
