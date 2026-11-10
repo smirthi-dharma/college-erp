@@ -6,7 +6,7 @@
   {% elif summary.status == 'warning' %}<div class="alert alert-warning">Careful: your attendance is close to the required {{ summary.rule.required_percent }}%.</div>
   {% elif summary.status == 'condoned' %}<div class="alert alert-info">Your attendance shortage has been condoned by the college.</div>{% endif %}
   <table class="table table-bordered"><thead class="thead-dark"><tr><th>Subject</th><th>Classes held</th><th>Attended</th><th>%</th><th>Status</th><th>Can still miss</th></tr></thead><tbody>
-    {% for e in summary.entries %}<tr><td>{% if e.offering %}{{ e.offering.subject.name }}{% else %}All subjects{% endif %}</td><td>{{ e.held }}</td><td>{{ e.attended }}{% if e.pending_on_duty %} <small>({{ e.pending_on_duty }} on duty awaiting review)</small>{% endif %}</td><td>{{ e.percent|default:"-" }}</td><td>{{ e.status|default:"-"|upper }}</td><td>{{ e.can_miss }}</td></tr>
+    {% for e in summary.entries %}<tr><td>{% if e.offering %}{{ e.offering.subject.name }}{% else %}All subjects{% endif %}</td><td>{{ e.held }}</td><td>{{ e.attended }}{% if e.pending_on_duty %} <small>({{ e.pending_on_duty }} on duty awaiting review)</small>{% endif %}</td><td>{% if e.percent is not None %}{{ e.percent }}{% else %}-{% endif %}</td><td>{{ e.status|default:"-"|upper }}</td><td>{{ e.can_miss }}</td></tr>
     {% empty %}<tr><td colspan="6">No attendance recorded yet.</td></tr>{% endfor %}
   </tbody></table>
   <small>Required: {{ summary.rule.required_percent }}%. Early warning below {{ summary.rule.warning_percent }}%. Counted {{ summary.rule.get_basis_display|lower }}.</small>

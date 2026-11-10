@@ -1,0 +1,26 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <form method="get" class="form-inline mb-3">
+    <input type="search" name="q" value="{{ q }}" class="form-control mr-2 mb-2" placeholder="Name, roll number or email" aria-label="Search">
+    <select name="programme" class="form-control mr-2 mb-2" aria-label="Programme"><option value="">All programmes</option>
+      {% for p in programmes %}<option value="{{ p.pk }}" {% if sel.programme == p.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    <select name="batch" class="form-control mr-2 mb-2" aria-label="Batch"><option value="">All batches</option>
+      {% for b in batches %}<option value="{{ b.pk }}" {% if sel.batch == b.pk %}selected{% endif %}>{{ b }}</option>{% endfor %}</select>
+    <select name="section" class="form-control mr-2 mb-2" aria-label="Section"><option value="">All sections</option>
+      {% for s in sections %}<option value="{{ s.pk }}" {% if sel.section == s.pk %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    <button class="btn btn-primary mb-2" type="submit">Search</button>
+  </form>
+  <div class="table-responsive"><table class="table table-bordered table-hover"><thead class="thead-dark"><tr><th>Name</th><th>Roll no.</th><th>Section</th><th>Attendance</th></tr></thead><tbody>
+    {% for s, status, badge in rows %}<tr>
+      <td><a href="{% url 'student_detail' s.pk %}">{{ s.admin.last_name }}, {{ s.admin.first_name }}</a></td>
+      <td>{{ s.roll_number|default:"-" }}</td><td>{{ s.section|default:"-" }}</td>
+      <td>{% if status %}<span class="badge badge-{{ badge }}">{{ status|upper }}</span>{% else %}-{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4">No students found.</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% if page.has_other_pages %}<nav>{% if page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?{{ querystring }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+    <span class="mx-2">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?{{ querystring }}&page={{ page.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+</div></section>
+{% endblock content %}
