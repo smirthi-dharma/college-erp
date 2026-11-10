@@ -53,7 +53,21 @@ Super admin, Management/Principal, IQAC coordinator, HoD, Faculty, Office staff
 - Update the "Current status" section below at the end of each session.
 
 ## Current status
-Last updated: 2026-11-09 (session 4)
+Last updated: 2026-11-10 (session 5)
+
+### Pilot items at a glance (checked 2026-11-10, after PR #8)
+| # | Item | State | Notes |
+|---|---|---|---|
+| 1 | Institution setup | **Built** | Department, Programme, Regulation, Batch/Section, Subject, Term, Offering, Enrolment; `/structure/`. Not built: HoD-only-own-department rule (role "4" has no pages). |
+| 2 | Bulk Excel import | **Built** | Students, parents, staff; preview, rollback, 2,000 rows max. Follow-ups: background processing, set-password e-mails, fees rollback blocker. |
+| 3 | Student 360 | **Built** | Read-only page and list, role-filtered, alerts, access log. Not built: refused-attempt logging (next), photo, documents, fees card content, CO-PO. |
+| 4 | Attendance + 75% warning | **Built** | All five approved additions exist and are tested: per-subject vs overall setting (A1), condonation band and record (A2), teacher on-duty review (A3), retry-safe submit (A4), one-class substitutes (A5). Not built: timetable/holidays, offline marking, real-phone timing. |
+| 5 | Internal marks + CO-PO | **Partly built** | Only the inherited test/exam mark per student and subject. CO-PO, question-wise marks, Bloom tags: NOT started (design in `docs/CO_PO_DATA_MODEL.md`, waiting on faculty answers). |
+| 6 | Fees + Razorpay | **Not started** | |
+| 7 | WhatsApp parent alerts | **Partly built** | Only the consent field and the consent-guarded `send_whatsapp()` stub; no WhatsApp Cloud API transport, no digest, no templates. |
+| 8 | Principal dashboard | **Not started** | The inherited admin home page shows a few counts; it is not the principal dashboard. |
+
+Non-negotiables still open: automated off-server backups and monthly restore test, DPDP export/deletion, real staging (none yet), phone timing of attendance.
 
 - [x] Base repo running locally (Django 5.2.19 LTS, Python 3.13 in `.venv`, PostgreSQL 17 via Postgres.app, dev DB `college_erp_dev`). Config only from env / git-ignored `.env` (template `.env.example`). History reset to a clean orphan `main`; the old upstream history lives only in the local branch `legacy-upstream-history-LOCAL-ONLY` (contains upstream's secrets, NEVER push). Private repo `github.com/smirthi-dharma/college-erp`; CI (tests, ruff+bandit, pip-audit, check --deploy, secret scan) is green. **Workflow now: one branch + PR per feature, never commit straight to main; merge when CI is green.** Merged: PR #1 (CLAUDE.md, docs/OBE_REFERENCE.md, docs/obe_seed.json), PR #2 (library models dropped, migration 0004).
 - [x] Gap list: base vs pilot scope -> `docs/GAP_LIST.md`. The `user_type` string-vs-int bug is FIXED (with tests); remaining known crashes are only the out-of-scope library pages.
