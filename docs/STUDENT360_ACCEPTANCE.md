@@ -89,3 +89,10 @@ attainment, a timeline of events, parent login, print / PDF.
   follows active enrolment).
 - Q4. **Alert wording for consent**: "WhatsApp consent not recorded" for unknown. Fine?
 - Q5. **Student photo**: the field exists but the import never fills it. Show an initials avatar for now?
+
+## Added 2026-11-10: refused attempts are logged
+Every refused attempt to open `/students/<id>/` (a teacher on a student they do not teach, a student, a head of department)
+is recorded in `StudentAccessLog` with outcome `refused`: who, which student, when. Repeated refusals each get a row.
+An id that does not exist is refused with the same 403 for non-admins (so ids cannot be probed) and logged; the college admin
+gets an honest 404 and no row. Anonymous visitors are not logged (no identity). Not built: a page to read the log (the rows
+are in the tenant schema; a college-admin report with refusal counts per viewer is the natural follow-up).

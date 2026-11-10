@@ -28,13 +28,22 @@ def visible_students(user):
 
 
 def require_access(user, student):
+    """Raise PermissionDenied (after recording the refused attempt) unless the user may open this student."""
     if not visible_students(user).filter(pk=student.pk).exists():
+        log_access(user, student, StudentAccessLog.REFUSED)
         raise PermissionDenied('You may not open this student.')
 
 
-def log_access(user, student):
+def log_access(user, student, outcome=StudentAccessLog.ALLOWED):
     StudentAccessLog.objects.create(viewer_id=user.pk, viewer_email=user.email, viewer_role=user.user_type,
-                                    student_id=student.pk, student_repr=str(student)[:200])
+                                    student_id=student.pk, student_repr=str(student)[:200], outcome=outcome)
+
+
+def log_refused_unknown(user, student_id):
+    """A refused attempt on an id that does not exist (someone probing ids)."""
+    StudentAccessLog.objects.create(viewer_id=user.pk, viewer_email=user.email, viewer_role=user.user_type,
+                                    student_id=student_id, student_repr='(no such student)',
+                                    outcome=StudentAccessLog.REFUSED)
 
 
 def _alerts(viewer_role, student, summary, guardians):
