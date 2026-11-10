@@ -53,14 +53,14 @@ Super admin, Management/Principal, IQAC coordinator, HoD, Faculty, Office staff
 - Update the "Current status" section below at the end of each session.
 
 ## Current status
-Last updated: 2026-11-10 (session 5)
+Last updated: 2026-11-10 (session 5, after PRs #9-#12 merged; 308 tests, about 30 s)
 
 ### Pilot items at a glance (checked 2026-11-10, after PR #8)
 | # | Item | State | Notes |
 |---|---|---|---|
 | 1 | Institution setup | **Built** | Department, Programme, Regulation, Batch/Section, Subject, Term, Offering, Enrolment; `/structure/`. Not built: HoD-only-own-department rule (role "4" has no pages). |
 | 2 | Bulk Excel import | **Built** | Students, parents, staff; preview, rollback, 2,000 rows max. Follow-ups: background processing, set-password e-mails, fees rollback blocker. |
-| 3 | Student 360 | **Built** | Read-only page and list, role-filtered, alerts, access log. Not built: refused-attempt logging (next), photo, documents, fees card content, CO-PO. |
+| 3 | Student 360 | **Built** | Read-only page and list, role-filtered, alerts, access log. Refused attempts are logged. Not built: photo, documents, fees card content, CO-PO. |
 | 4 | Attendance + 75% warning | **Built** | All five approved additions exist and are tested: per-subject vs overall setting (A1), condonation band and record (A2), teacher on-duty review (A3), retry-safe submit (A4), one-class substitutes (A5). Not built: timetable/holidays, offline marking, real-phone timing. |
 | 5 | Internal marks + CO-PO | **Partly built** | Only the inherited test/exam mark per student and subject. CO-PO, question-wise marks, Bloom tags: NOT started (design in `docs/CO_PO_DATA_MODEL.md`, waiting on faculty answers). |
 | 6 | Fees + Razorpay | **Not started** | |
