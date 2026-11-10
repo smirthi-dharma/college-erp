@@ -68,6 +68,14 @@
             </a>
         </div>
 
+        <div class="nav-item">
+            {% url 'messaging_settings' as messaging_settings %}
+            <a href="{{ messaging_settings }}" class="nav-link {% if '/messaging/' in request.path %}active{% endif %}">
+                <i class="nav-icon fab fa-whatsapp"></i>
+                <span class="nav-text">WhatsApp digest</span>
+            </a>
+        </div>
+
         <h6 class="nav-section-title">User Management</h6>
         
         <div class="nav-item">

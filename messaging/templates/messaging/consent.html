@@ -1,0 +1,18 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <p><a href="{% url 'messaging_settings' %}">Settings</a>. Nobody gets a WhatsApp message unless their consent here is <strong>yes</strong>. Record "yes" only when the guardian has agreed (for example on the signed admission form).</p>
+  <form method="get" class="form-inline mb-3"><input type="search" name="q" value="{{ q }}" class="form-control mr-2" placeholder="Name or phone" aria-label="Search"><button class="btn btn-primary" type="submit">Search</button></form>
+  <div class="table-responsive"><table class="table table-bordered"><thead class="thead-dark"><tr><th>Guardian</th><th>Phone</th><th>Consent</th><th>How / when</th><th>Record</th></tr></thead><tbody>
+  {% for g in page %}<tr><td>{{ g.full_name }}</td><td>{{ g.phone }}</td><td>{{ g.get_whatsapp_consent_display }}</td>
+    <td>{{ g.consent_source|default:"-" }}{% if g.consent_recorded_at %}<br><small>{{ g.consent_recorded_at|date:"j M Y H:i" }}</small>{% endif %}</td>
+    <td><form method="post" class="form-inline">{% csrf_token %}<input type="hidden" name="guardian" value="{{ g.pk }}">
+      <input name="source" class="form-control form-control-sm mr-1" placeholder="How obtained" aria-label="How consent was obtained">
+      <button name="value" value="yes" class="btn btn-success btn-sm mr-1">Yes</button><button name="value" value="no" class="btn btn-outline-danger btn-sm">No</button></form></td></tr>
+  {% empty %}<tr><td colspan="5">No guardians.</td></tr>{% endfor %}</tbody></table></div>
+  {% if page.has_other_pages %}<nav>{% if page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?q={{ q }}&page={{ page.previous_page_number }}">Previous</a>{% endif %}
+    <span class="mx-2">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?q={{ q }}&page={{ page.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+</div></section>
+{% endblock content %}

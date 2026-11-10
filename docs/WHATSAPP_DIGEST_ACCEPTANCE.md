@@ -1,6 +1,29 @@
 # WhatsApp absence digest: design and acceptance checks (pilot item 7)
 
-Status: **PROPOSED, NOT BUILT.** Waiting for Smirthi to approve the checks and answer the open questions at the end.
+Status: **APPROVED and BUILT** (branch `feat/whatsapp-digest`), with my recommended answers to Q1-Q8: Celery + Redis (Q1),
+primary guardian only (Q2), one platform number with per-college identifiers (Q3), child name + period + subject (Q4),
+opt-out by reply (Q5), minimal consent screen included (Q6), message log kept 12 months **(retention job NOT built yet)** (Q7),
+Tamil wording is a DRAFT until someone checks it (Q8). Tests: `messaging/tests/` (check numbers are in the test names; every
+check 1-25 has at least one test; check 26 is the manual run below and is NOT done).
+Verified by mutation: removing the consent guard, the signature check or the double-send guard each fails tests.
+
+**Manual check 26 (not done):** run on Meta's test number to Smirthi's own phone, then record the date and result here.
+
+## How to run it
+- Needs env vars (never in git): `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`,
+  `FIELD_ENCRYPTION_KEY` (generate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`), and `REDIS_URL`
+  for the background worker.
+- Worker + scheduler: `celery -A college_management_system worker -B -l info`. Without Redis: `manage.py run_digest [--schema demo] [--ignore-time]`
+  (also fine from cron: a day is never sent twice).
+- Webhook URL to give Meta: `https://<any college or platform host>/webhooks/whatsapp/` with your verify token.
+- As college admin: sidebar "WhatsApp digest" -> settings (off and dry run by default), consent, daily report, usage.
+- Platform staff set the per-message rate in `/platform-admin/` (UsageRate); with no rate the cost shows 0.
+
+## Not built / known gaps
+Message-log retention job (Q7); a per-message manual re-send for `unknown` messages; Meta's real prices and rules not checked against
+current documentation (the category defaults to utility and is corrected from Meta's webhook when it reports pricing); the webhook
+scans every college for a STOP reply (fine for a few colleges, needs an index table at scale); the Redis service, worker and beat are
+not yet in the Coolify setup; Tamil wording unreviewed.
 Requirements come from Smirthi's brief of 2026-11-10; the decisions I had to add are marked **(my addition)**.
 
 ## What it is

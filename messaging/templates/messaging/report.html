@@ -1,0 +1,22 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <p><a href="{% url 'messaging_settings' %}">Settings</a></p>
+  <form method="get" class="form-inline mb-3"><input type="date" name="date" value="{{ report.day|date:'Y-m-d' }}" class="form-control mr-2" aria-label="Date"><button class="btn btn-primary mr-2" type="submit">Show</button>
+    <a class="btn btn-outline-secondary" href="{% url 'messaging_report_csv' %}?date={{ report.day|date:'Y-m-d' }}">Download CSV</a></form>
+  {% if settings.state != 'ok' %}<div class="alert alert-danger">Needs attention: {{ settings.state_reason }}</div>{% endif %}
+  <div class="card"><div class="card-header"><h3 class="card-title">Live messages for {{ report.day|date:"j M Y" }}</h3></div><div class="card-body">
+    {% if report.live_run %}<table class="table table-bordered"><thead class="thead-dark"><tr>{% for key, label in columns.items %}{% if key != 'dry_run' %}<th>{{ label }}</th>{% endif %}{% endfor %}</tr></thead>
+      <tbody><tr>{% for key, label in columns.items %}{% if key != 'dry_run' %}<td data-col="{{ key }}">{% for k, v in report.counts.items %}{% if k == key %}{{ v }}{% endif %}{% endfor %}</td>{% endif %}{% endfor %}</tr></tbody></table>
+      {% if report.live_run.unreachable_students %}<p class="text-muted">{{ report.live_run.unreachable_students }} absent student(s) had no guardian to tell.</p>{% endif %}
+    {% else %}<p>No live digest ran on this day.</p>{% endif %}
+    {% if report.late_marked %}<p class="text-muted">{{ report.late_marked }} class(es) were marked after the send time and are not in the digest.</p>{% endif %}
+  </div></div>
+  {% if report.dry_run %}<div class="card"><div class="card-header"><h3 class="card-title">Dry run</h3></div><div class="card-body"><p>{{ report.dry_counts.dry_run }} message(s) would have been sent; {{ report.dry_counts.skipped_no_consent }} guardian(s) skipped for no consent. Nothing was sent.</p></div></div>{% endif %}
+  <div class="table-responsive"><table class="table table-sm table-bordered"><thead class="thead-light"><tr><th>Guardian</th><th>Mode</th><th>Status</th><th>Tries</th><th>Language</th><th>Message / error</th></tr></thead><tbody>
+    {% for m in report.messages %}<tr><td>{{ m.guardian.full_name }}</td><td>{{ m.mode }}</td><td>{{ m.get_status_display }}</td><td>{{ m.attempts }}</td><td>{{ m.language }}</td>
+      <td>{% if m.last_error %}<span class="text-danger">{{ m.last_error }}</span>{% else %}{{ m.rendered_text }}{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6">No messages.</td></tr>{% endfor %}</tbody></table></div>
+</div></section>
+{% endblock content %}
