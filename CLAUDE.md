@@ -63,8 +63,8 @@ Last updated: 2026-11-10 (session 5, after PRs #9-#12 merged; 308 tests, about 3
 | 3 | Student 360 | **Built** | Read-only page and list, role-filtered, alerts, access log. Refused attempts are logged. Not built: photo, documents, fees card content, CO-PO. |
 | 4 | Attendance + 75% warning | **Built** | All five approved additions exist and are tested: per-subject vs overall setting (A1), condonation band and record (A2), teacher on-duty review (A3), retry-safe submit (A4), one-class substitutes (A5). Not built: timetable/holidays, offline marking, real-phone timing. |
 | 5 | Internal marks + CO-PO | **Partly built** | Only the inherited test/exam mark per student and subject. CO-PO, question-wise marks, Bloom tags: NOT started (design in `docs/CO_PO_DATA_MODEL.md`, waiting on faculty answers). |
-| 6 | Fees + Razorpay | **Not started** | |
-| 7 | WhatsApp parent alerts | **Partly built** | Only the consent field and the consent-guarded `send_whatsapp()` stub; no WhatsApp Cloud API transport, no digest, no templates. |
+| 6 | Fees + Razorpay | **Not started** | Design notes only: `docs/FEES_DESIGN_NOTES.md` (each college's own Razorpay keys, encrypted per tenant; money never passes through us). |
+| 7 | WhatsApp parent alerts | **Partly built** | Only the consent field and the consent-guarded `send_whatsapp()` stub; no WhatsApp Cloud API transport, no digest, no templates. Acceptance checks for the absence digest are PROPOSED in `docs/WHATSAPP_DIGEST_ACCEPTANCE.md` (26 checks, 8 open questions), awaiting approval. |
 | 8 | Principal dashboard | **Not started** | The inherited admin home page shows a few counts; it is not the principal dashboard. |
 
 Non-negotiables still open: automated off-server backups and monthly restore test, DPDP export/deletion, real staging (none yet), phone timing of attendance.
