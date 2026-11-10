@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 
 import json
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -146,6 +147,11 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
 # Always on (the inherited code disabled them when DEBUG was off, i.e. in production).
+# Tests create thousands of users; the real hasher (deliberately slow) made password hashing most of the suite's run
+# time. Only `manage.py test` gets the fast one; every other run, including production, keeps Django's default.
+if sys.argv[1:2] == ['test']:
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
