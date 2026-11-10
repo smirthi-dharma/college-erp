@@ -310,11 +310,55 @@ class AccessLogTests(Student360Base):
         sid = self.stud_ids[self.stud1.email]
         self.assertEqual(sorted(self.logs()), [('admin@a.in', '1', sid), ('staff1@a.in', '2', sid)])
 
-    def test_q1_refused_list_and_own_views_are_not_logged(self):
-        self.as_user(self.staff1).get(f'/students/{self.stud_ids[self.stud3.email]}/')  # 403
+    def test_q1_list_and_own_views_are_not_logged(self):
         self.as_user(self.admin).get('/students/')
         self.as_user(self.stud1).get('/students/me/')
         self.assertEqual(self.logs(), [])
+
+    def refused(self):
+        with tenant_context(self.college_a):
+            return list(StudentAccessLog.objects.filter(outcome='refused').order_by('id')
+                        .values_list('viewer_email', 'viewer_role', 'student_id', 'outcome'))
+
+    def test_refused_teacher_attempt_is_logged_with_who_which_student_and_when(self):
+        from django.utils import timezone
+        sid = self.stud_ids[self.stud3.email]
+        start = timezone.now()
+        self.assertEqual(self.as_user(self.staff1).get(f'/students/{sid}/').status_code, 403)
+        self.assertEqual(self.refused(), [('staff1@a.in', '2', sid, 'refused')])
+        with tenant_context(self.college_a):
+            row = StudentAccessLog.objects.get()
+            self.assertEqual(row.student_repr, 'Three, Stu')
+            self.assertGreaterEqual(row.timestamp, start)
+            self.assertLessEqual(row.timestamp, timezone.now())
+
+    def test_refused_attempts_by_students_and_heads_of_department_are_logged(self):
+        sid = self.stud_ids[self.stud2.email]
+        self.assertEqual(self.as_user(self.stud1).get(f'/students/{sid}/').status_code, 403)
+        self.assertEqual(self.as_user(self.hod).get(f'/students/{sid}/').status_code, 403)
+        self.assertEqual(self.refused(), [('stud1@a.in', '3', sid, 'refused'), ('hod@a.in', '4', sid, 'refused')])
+
+    def test_repeated_refusals_are_each_recorded(self):
+        sid = self.stud_ids[self.stud3.email]
+        client = self.as_user(self.staff1)
+        for _ in range(3):
+            client.get(f'/students/{sid}/')
+        self.assertEqual(len(self.refused()), 3)
+
+    def test_probing_unknown_ids_is_refused_like_a_real_student_and_logged(self):
+        # a teacher cannot tell "not yours" from "does not exist"
+        r = self.as_user(self.staff1).get('/students/999999/')
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.refused(), [('staff1@a.in', '2', 999999, 'refused')])
+        # the college admin gets an honest 404 and nothing is logged
+        self.assertEqual(self.as_user(self.admin).get('/students/999999/').status_code, 404)
+        self.assertEqual(len(self.refused()), 1)
+
+    def test_allowed_views_are_marked_allowed_and_anonymous_is_not_logged(self):
+        self.text(self.staff1, self.stud1)
+        self.anon_client(HOST_A).get(f'/students/{self.stud_ids[self.stud1.email]}/')
+        with tenant_context(self.college_a):
+            self.assertEqual(list(StudentAccessLog.objects.values_list('outcome', flat=True)), ['allowed'])
 
     def test_q1_log_is_append_only(self):
         self.text(self.admin, self.stud1)
