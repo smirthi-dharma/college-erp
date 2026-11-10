@@ -1,6 +1,10 @@
 # Student 360: design and acceptance checks (pilot item 3)
 
-Status: PROPOSED. Nothing is built. Approve or change the checks below, then I build.
+Status: APPROVED and BUILT (branch `feat/student-360`). Approved answers: Q1 yes (access log), Q2 teachers see overall
+attendance but marks only for their own subjects, Q3 access follows active enrolment, Q4 wording as proposed, Q5 initials avatar.
+Tests: `student360/tests/test_student360.py` (check numbers are in the test names).
+Built in addition: `StudentAccessLog` (append-only, not in AUDIT_APPS because it is itself a log). While testing, found and fixed a
+bug in the student's own attendance page: a 0.00% figure was shown as "-" (a zero Decimal is falsy in the `default` filter).
 
 ## What it is
 One read-only page per student that gathers what the college already knows about them, so a college admin or

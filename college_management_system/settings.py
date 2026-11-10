@@ -71,6 +71,7 @@ TENANT_APPS = [
     'academics.apps.AcademicsConfig',
     'bulk_import.apps.BulkImportConfig',
     'attendance.apps.AttendanceConfig',
+    'student360.apps.Student360Config',
     'audit_trail',
     'axes',
     'django_otp',

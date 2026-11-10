@@ -214,6 +214,14 @@
             </a>
         </div>
 
+        <div class="nav-item">
+            {% url 'student_list' as student_list %}
+            <a href="{{ student_list }}" class="nav-link {% if 'students/' in request.path %}active{% endif %}">
+                <i class="nav-icon fas fa-id-card"></i>
+                <span class="nav-text">Student 360</span>
+            </a>
+        </div>
+
         <h6 class="nav-section-title">Attendance</h6>
         
         <div class="nav-item">
@@ -324,6 +332,14 @@
             </a>
         </div>
 
+        <div class="nav-item">
+            {% url 'student_list' as student_list %}
+            <a href="{{ student_list }}" class="nav-link {% if 'students/' in request.path %}active{% endif %}">
+                <i class="nav-icon fas fa-id-card"></i>
+                <span class="nav-text">Student 360</span>
+            </a>
+        </div>
+
         <h6 class="nav-section-title">Attendance</h6>
         
         <div class="nav-item">
@@ -387,6 +403,13 @@
             <a href="{{ my_attendance }}" class="nav-link {% if my_attendance == request.path %}active{% endif %}"><i class="nav-icon fas fa-percentage"></i><span class="nav-text">My attendance</span></a>
         </div>
 
+        <div class="nav-item">
+            {% url 'student_me' as student_me %}
+            <a href="{{ student_me }}" class="nav-link {% if student_me == request.path %}active{% endif %}">
+                <i class="nav-icon fas fa-id-card"></i>
+                <span class="nav-text">My 360 profile</span>
+            </a>
+        </div>
         <div class="nav-item">
             {% url 'student_view_attendance' as student_view_attendance %}
             <a href="{{ student_view_attendance }}" class="nav-link {% if student_view_attendance == request.path %}active{% endif %}">

@@ -1,0 +1,72 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  {% if alerts %}<div id="alerts">{% for level, text, kind in alerts %}
+    <div class="alert alert-{{ level }}" data-alert="{{ kind }}">{{ text }}
+      {% if role == '1' %}{% if kind == 'no_section' or kind == 'no_guardian' or kind == 'no_consent' %} <a href="{% url 'edit_student' student.pk %}">Fix</a>{% elif kind == 'shortage' %} <a href="{% url 'condonation_list' %}">Condonation</a>{% elif kind == 'on_duty' %} <a href="{% url 'onduty_review' %}">Review</a>{% endif %}{% endif %}
+    </div>{% endfor %}</div>{% endif %}
+
+  <div class="card"><div class="card-body d-flex flex-wrap align-items-center">
+    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mr-3" style="width:64px;height:64px;font-size:24px" aria-hidden="true">{{ initials }}</div>
+    <div><h4 class="mb-0">{{ user_row.first_name }} {{ user_row.last_name }}</h4>
+      <div>Roll no. {{ student.roll_number|default:"-" }} &middot; {{ user_row.email }}{% if user_row.phone %} &middot; {{ user_row.phone }}{% endif %}</div></div>
+  </div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Identity</h5></div><div class="card-body"><dl class="row mb-0">
+    <dt class="col-sm-3">Gender</dt><dd class="col-sm-9">{{ user_row.get_gender_display|default:user_row.gender }}</dd>
+    {% if show_private %}<dt class="col-sm-3">Date of birth</dt><dd class="col-sm-9">{{ student.date_of_birth|default:"-" }}</dd>
+    <dt class="col-sm-3">Address</dt><dd class="col-sm-9">{{ user_row.address|default:"-" }}</dd>{% endif %}
+  </dl></div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Academics</h5></div><div class="card-body"><dl class="row mb-0">
+    <dt class="col-sm-3">Department</dt><dd class="col-sm-9">{{ programme.department|default:"-" }}</dd>
+    <dt class="col-sm-3">Programme</dt><dd class="col-sm-9">{{ programme|default:"-" }}</dd>
+    <dt class="col-sm-3">Batch</dt><dd class="col-sm-9">{{ batch|default:"-" }}</dd>
+    <dt class="col-sm-3">Section</dt><dd class="col-sm-9">{{ section|default:"-" }}</dd>
+    <dt class="col-sm-3">Regulation</dt><dd class="col-sm-9">{{ regulation|default:"-" }}</dd>
+  </dl></div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Subjects this term</h5></div><div class="card-body table-responsive">
+    <table class="table table-sm"><thead><tr><th>Subject</th><th>Faculty</th><th>Type</th><th>Source</th></tr></thead><tbody>
+      {% for e in active %}<tr><td>{{ e.offering.subject.name }}</td><td>{{ e.offering.faculty.admin.first_name|default:"-" }} {{ e.offering.faculty.admin.last_name }}</td><td>{{ e.offering.get_kind_display }}</td><td>{{ e.get_source_display }}</td></tr>
+      {% empty %}<tr><td colspan="4">Not enrolled in any subject.</td></tr>{% endfor %}
+    </tbody></table>
+    {% if history %}<details><summary>History ({{ history|length }} withdrawn)</summary><ul>{% for e in history %}<li>{{ e.offering.subject.name }} (withdrawn {{ e.withdrawn_on|default:"" }})</li>{% endfor %}</ul></details>{% endif %}
+  </div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Attendance</h5></div><div class="card-body table-responsive">
+    {% if overall %}<p>Overall: <strong>{{ overall }}%</strong> ({{ attended }} of {{ held }} classes)</p>{% endif %}
+    <table class="table table-sm"><thead><tr><th>Subject</th><th>Held</th><th>Attended</th><th>%</th><th>Status</th><th>Can still miss</th></tr></thead><tbody>
+      {% for e in summary.entries %}<tr><td>{% if e.offering %}{{ e.offering.subject.name }}{% else %}All subjects{% endif %}</td><td>{{ e.held }}</td><td>{{ e.attended }}{% if e.pending_on_duty %} <small>({{ e.pending_on_duty }} awaiting review)</small>{% endif %}</td><td>{% if e.percent is not None %}{{ e.percent }}{% else %}-{% endif %}</td><td>{{ e.status|default:"-"|upper }}</td><td>{{ e.can_miss }}</td></tr>
+      {% empty %}<tr><td colspan="6">No attendance recorded yet.</td></tr>{% endfor %}
+    </tbody></table>
+    <small>Required {{ summary.rule.required_percent }}%, warning below {{ summary.rule.warning_percent }}%.</small>
+  </div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Marks</h5></div><div class="card-body table-responsive">
+    <table class="table table-sm"><thead><tr><th>Subject</th><th>Test</th><th>Exam</th></tr></thead><tbody>
+      {% for r in results %}<tr><td>{{ r.offering.subject.name }}</td><td>{{ r.test }}</td><td>{{ r.exam }}</td></tr>
+      {% empty %}<tr><td colspan="3">No marks yet.</td></tr>{% endfor %}
+    </tbody></table>
+    {% if role == '2' %}<small>You see marks for your own subjects only.</small>{% endif %}
+  </div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Guardians</h5></div><div class="card-body table-responsive">
+    <table class="table table-sm"><thead><tr><th>Name</th><th>Relation</th>{% if show_private %}<th>Phone</th>{% endif %}{% if role == '1' %}<th>WhatsApp consent</th>{% endif %}</tr></thead><tbody>
+      {% for g in guardians %}<tr><td>{{ g.guardian.full_name }}{% if g.is_primary %} <span class="badge badge-primary">Primary</span>{% endif %}</td><td>{{ g.get_relation_display }}</td>{% if show_private %}<td>{{ g.guardian.phone }}</td>{% endif %}{% if role == '1' %}<td>{{ g.guardian.get_whatsapp_consent_display }}</td>{% endif %}</tr>
+      {% empty %}<tr><td colspan="4">No guardian on file.</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+
+  <div class="card"><div class="card-header"><h5 class="mb-0">Fees</h5></div><div class="card-body">Fees module not built yet.</div></div>
+
+  {% if show_changes %}<div class="card"><div class="card-header"><h5 class="mb-0">Recent changes</h5></div><div class="card-body table-responsive">
+    <table class="table table-sm"><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead><tbody>
+      {% for c in changes %}<tr><td>{{ c.timestamp|date:"Y-m-d H:i" }}</td><td>{{ c.actor_email|default:c.source }}</td><td>{{ c.get_action_display }} {{ c.model_label }}</td></tr>
+      {% empty %}<tr><td colspan="3">No recorded changes.</td></tr>{% endfor %}
+    </tbody></table></div></div>{% endif %}
+
+  {% if role == '3' %}<p><a href="{% url 'student_view_attendance' %}">My attendance</a> &middot; <a href="{% url 'student_view_profile' %}">Edit my profile</a></p>{% endif %}
+</div></section>
+{% endblock content %}
