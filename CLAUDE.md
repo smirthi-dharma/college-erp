@@ -53,6 +53,8 @@ Super admin, Management/Principal, IQAC coordinator, HoD, Faculty, Office staff
 - Update the "Current status" section below at the end of each session.
 
 ## Current status
+Demo data: `manage.py seed_demo [--schema demo]` (after `create_demo_college`) adds a programme, section, 2 subjects, 10 students with 9 guardians (mixed WhatsApp consent, two siblings), enrolments and 10 days of attendance; idempotent, demo schemas only (name must start with `demo`), never overwrites edits.
+
 Last updated: 2026-11-10 (session 5, after PRs #9-#12 merged; 308 tests, about 30 s)
 
 ### Pilot items at a glance (checked 2026-11-10, after PR #8)
