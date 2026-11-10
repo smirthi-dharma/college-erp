@@ -19,36 +19,51 @@ HOST_B = 'b.testserver'
 PASSWORD = 'Sup3r-secret-pw'  # pragma: allowlist secret
 EMAIL_BACKEND = 'main_app.EmailBackend.EmailBackend'
 
+
+_SHARED = {}
+
+
+def _make_college(schema, name, host):
+    connection.set_schema_to_public()
+    college = College.objects.filter(schema_name=schema).first()  # a kept test database may already have it
+    if college is None:
+        college = College(schema_name=schema, name=name)
+        college.save()  # auto-creates the schema and runs tenant migrations
+    Domain.objects.get_or_create(tenant=college, domain=host, defaults={'is_primary': True})
+    return college
+
+
+def _shared_colleges():
+    if not _SHARED:
+        _SHARED['a'] = _make_college('college_a', 'College A', HOST_A)
+        _SHARED['b'] = _make_college('college_b', 'College B', HOST_B)
+    connection.set_schema_to_public()
+    return _SHARED['a'], _SHARED['b']
+
+
 # DEBUG=True so tests do not depend on the whitenoise static manifest or on
 # reCAPTCHA keys (login skips the captcha only when DEBUG and no keys).
 @override_settings(DEBUG=True, ALLOWED_HOSTS=['.testserver', 'testserver'],
                    RECAPTCHA_SITE_KEY='', RECAPTCHA_SECRET_KEY='')
 class TwoCollegeTestCase(TestCase):
-    """Creates College A and College B once per test class."""
+    """College A and College B, created once per test process and shared by every test class.
 
-    # Colleges are created *outside* Django's per-class transaction (before
-    # super().setUpClass()) because creating/dropping a schema inside it fails
-    # with "pending trigger events". Per-test data is still rolled back.
+    Creating a schema runs every tenant migration, which used to be repeated for each of ~70 test classes and was
+    most of the suite's run time. The colleges are committed once (outside Django's per-class transaction, because
+    creating a schema inside it fails with "pending trigger events") and then reused. Everything a test writes,
+    including data migrations it runs, happens inside the test's own transaction and is rolled back, so tests still
+    start from empty colleges. With ``--parallel`` each worker process has its own database and creates its own pair.
+    """
+
     @classmethod
     def setUpClass(cls):
-        cls.college_a = cls._make_college('college_a', 'College A', HOST_A)
-        cls.college_b = cls._make_college('college_b', 'College B', HOST_B)
+        cls.college_a, cls.college_b = _shared_colleges()
         super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         connection.set_schema_to_public()
-        for college in (cls.college_a, cls.college_b):
-            Domain.objects.filter(tenant=college).delete()
-            college.delete(force_drop=True)
-
-    @staticmethod
-    def _make_college(schema, name, host):
-        college = College(schema_name=schema, name=name)
-        college.save()  # auto-creates the schema and runs tenant migrations
-        Domain.objects.create(tenant=college, domain=host, is_primary=True)
-        return college
 
     def tearDown(self):
         connection.set_schema_to_public()
