@@ -1,0 +1,15 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <p><a href="{% url 'messaging_settings' %}">Settings</a></p>
+  <form method="get" class="form-inline mb-3"><input type="month" name="month" value="{{ month }}" class="form-control mr-2" aria-label="Month"><button class="btn btn-primary mr-2" type="submit">Show</button>
+    <a class="btn btn-outline-secondary" href="{% url 'messaging_usage_csv' %}?month={{ month }}">Download CSV</a></form>
+  <div class="card"><div class="card-body">
+    <table class="table table-bordered"><thead class="thead-dark"><tr><th>Category</th><th>Messages</th><th>Estimated cost (INR)</th></tr></thead><tbody>
+      {% for r in usage.rows %}<tr><td>{{ r.category }}</td><td>{{ r.count }}</td><td>{{ r.cost }}</td></tr>{% empty %}<tr><td colspan="3">No messages this month.</td></tr>{% endfor %}
+      <tr class="font-weight-bold"><td>Total</td><td>{{ usage.total_count }}</td><td>{{ usage.total_cost }}</td></tr></tbody></table>
+    <p class="text-muted">An estimate until it is reconciled with Meta's invoice. Failed messages and dry runs cost nothing and are not counted.</p>
+  </div></div>
+</div></section>
+{% endblock content %}

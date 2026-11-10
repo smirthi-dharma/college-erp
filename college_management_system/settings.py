@@ -73,6 +73,7 @@ TENANT_APPS = [
     'bulk_import.apps.BulkImportConfig',
     'attendance.apps.AttendanceConfig',
     'student360.apps.Student360Config',
+    'messaging.apps.MessagingConfig',
     'audit_trail',
     'axes',
     'django_otp',
@@ -80,7 +81,7 @@ TENANT_APPS = [
 ]
 
 # Models of these apps are recorded in the audit log (audit_trail).
-AUDIT_APPS = ['main_app', 'academics', 'bulk_import', 'attendance']
+AUDIT_APPS = ['main_app', 'academics', 'bulk_import', 'attendance', 'messaging']
 
 INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
 
@@ -275,3 +276,19 @@ PLATFORM_ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get('PLATFORM_ADM
 # Not the default /admin/ path (the HoD dashboard already lives under /admin/home/).
 ADMIN_URL = (os.environ.get('DJANGO_ADMIN_URL') or 'platform-admin/').lstrip('/')
 OTP_TOTP_ISSUER = 'College ERP'
+
+
+# --- WhatsApp messaging and background jobs --------------------------------------------------
+# Platform-level WhatsApp credentials come from the environment only (see docs/WHATSAPP_DIGEST_ACCEPTANCE.md):
+#   WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET (signs webhooks), WHATSAPP_VERIFY_TOKEN.
+# Per-college secrets in the database are encrypted with this key (a Fernet key: see docs/DEV_SETUP.md).
+FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
+
+CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_TASK_ALWAYS_EAGER = sys.argv[1:2] == ['test']  # tests run tasks inline and never need Redis
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TIMEZONE = 'Asia/Kolkata'
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BEAT_SCHEDULE = {
+    'dispatch-whatsapp-digests': {'task': 'messaging.tasks.dispatch_due_digests', 'schedule': 60.0},
+}
