@@ -11,7 +11,7 @@ class SettingsForm(forms.ModelForm):
 
     class Meta:
         model = DigestSettings
-        fields = ['enabled', 'dry_run', 'send_time', 'default_language', 'primary_guardian_only', 'phone_number_id']
+        fields = ['enabled', 'dry_run', 'send_time', 'default_language', 'primary_guardian_only', 'retention_months', 'phone_number_id']
         widgets = {'send_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'})}
 
     def clean(self):

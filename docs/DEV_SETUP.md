@@ -44,6 +44,8 @@ Tests need nothing (tasks run inline, no network). To try it locally: `manage.py
 foreground with no Redis (it is in dry run until a college admin turns it on in the app). The full variable list and the Celery command are
 in `docs/WHATSAPP_DIGEST_ACCEPTANCE.md`. Generate `FIELD_ENCRYPTION_KEY` once and keep it: losing it makes stored college secrets unreadable.
 
+`manage.py purge_message_log --dry-run` shows what the nightly retention job would delete.
+
 ## Django admin (platform staff only)
 
 Set `PLATFORM_ADMIN_EMAILS=you@yourcompany.in` in `.env`, then for each college:

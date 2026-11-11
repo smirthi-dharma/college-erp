@@ -4,8 +4,10 @@ import json
 
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import connection
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
@@ -13,10 +15,10 @@ from django.views.decorators.http import require_GET, require_http_methods
 from main_app.access import COLLEGE_ADMIN, public_view, role_required
 from main_app.models import Guardian
 
-from . import reports, services
+from . import reports, services, tasks
 from . import webhook as hook
 from .forms import SettingsForm
-from .models import CollegeSecret, DigestSettings
+from .models import CollegeSecret, DigestMessage, DigestSettings
 
 admin_only = role_required(COLLEGE_ADMIN, strict=True)  # college admin only; teacher, student and HoD get 403
 
@@ -127,6 +129,26 @@ def consent_page(request):
         guardians = guardians.filter(full_name__icontains=q) | guardians.filter(phone__icontains=q)
     page = Paginator(guardians.order_by('full_name', 'id'), 50).get_page(request.GET.get('page'))
     return render(request, 'messaging/consent.html', {'page': page, 'q': q, 'page_title': 'WhatsApp consent'})
+
+
+@admin_only
+@require_http_methods(['GET', 'POST'])
+def resend_message(request, pk):
+    message = get_object_or_404(DigestMessage.objects.select_related('guardian'), pk=pk)
+    if request.method == 'POST':
+        if request.POST.get('confirm') != 'yes':
+            messages.error(request, 'Tick the box to confirm that you understand the parent may receive the message twice.')
+            return redirect(request.get_full_path())
+        try:
+            services.resend(message.pk, request.user)
+        except services.ResendError as exc:
+            messages.error(request, str(exc))
+        else:
+            tasks.send_message_task.delay(connection.schema_name, message.pk)
+            messages.success(request, 'The message was queued to be sent again.')
+        return redirect('%s?date=%s' % (reverse('messaging_report'), message.digest_date.isoformat()))
+    return render(request, 'messaging/resend.html', {
+        'message': message, 'limits': (services.MAX_RESENDS, services.MAX_RESEND_AGE_DAYS), 'page_title': 'Send a message again'})
 
 
 @csrf_exempt

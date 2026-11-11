@@ -7,6 +7,8 @@
   {% if not settings.enabled %}<div class="alert alert-secondary">The digest is <strong>off</strong>. No message is built or sent.</div>
   {% elif settings.dry_run %}<div class="alert alert-info">The digest is on in <strong>dry run</strong>: messages are written down in the report but nothing is sent to anyone.</div>
   {% else %}<div class="alert alert-warning">The digest is <strong>live</strong>: guardians who said yes get a WhatsApp message every day at {{ settings.send_time|time:"H:i" }}.</div>{% endif %}
+  <p class="text-muted">Message records (they contain children's names) are deleted automatically after {{ settings.retention_months }} months, every night.
+    {% if settings.last_purge_at %}Last clean-up: {{ settings.last_purge_at|date:"j M Y H:i" }}, {{ settings.last_purge_count }} record(s) deleted.{% else %}No clean-up has run yet.{% endif %}</p>
   <div class="card"><div class="card-header"><h3 class="card-title">Absence digest settings</h3></div>
   <form method="post" class="card-body">{% csrf_token %}
     {{ form.non_field_errors }}
