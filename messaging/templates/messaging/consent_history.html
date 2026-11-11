@@ -1,0 +1,13 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <p><a href="{% url 'messaging_consent' %}">Back to consent</a></p>
+  <h4>{{ guardian.full_name }} <small class="text-muted">{{ guardian.phone }}</small></h4>
+  <p>Current answer: <strong>{{ guardian.get_whatsapp_consent_display }}</strong>. Newest first.</p>
+  <div class="table-responsive"><table class="table table-bordered"><thead class="thead-dark"><tr><th>When</th><th>Decision</th><th>How</th><th>Recorded by</th><th>Note</th><th>Signed form</th></tr></thead><tbody>
+  {% for r in records %}<tr><td>{{ r.recorded_at|date:"j M Y H:i" }}</td><td>{{ r.get_value_display }}</td><td>{{ r.get_method_display }}</td><td>{{ r.recorded_by_email|default:"system" }}</td><td>{{ r.note|default:"-" }}</td>
+    <td>{% if r.scan %}<a href="{% url 'messaging_consent_scan' r.pk %}">Download</a>{% else %}-{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6">No evidence has been recorded for this guardian.</td></tr>{% endfor %}</tbody></table></div>
+</div></section>
+{% endblock content %}
