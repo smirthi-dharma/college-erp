@@ -11,7 +11,7 @@ Verified by mutation: removing the consent guard, the signature check or the dou
 
 ## How to run it
 - Needs env vars (never in git): `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`,
-  `FIELD_ENCRYPTION_KEY` (generate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`), and `REDIS_URL`
+  `FIELD_ENCRYPTION_KEYS` (comma-separated, newest first; generate with `manage.py new_encryption_key`; rotation and backup in `docs/KEY_MANAGEMENT.md`), and `REDIS_URL`
   for the background worker.
 - Worker + scheduler: `celery -A college_management_system worker -B -l info`. Without Redis: `manage.py run_digest [--schema demo] [--ignore-time]`
   (also fine from cron: a day is never sent twice).

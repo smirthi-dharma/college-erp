@@ -283,6 +283,8 @@ OTP_TOTP_ISSUER = 'College ERP'
 #   WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET (signs webhooks), WHATSAPP_VERIFY_TOKEN.
 # Per-college secrets in the database are encrypted with this key (a Fernet key: see docs/DEV_SETUP.md).
 FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
+# Preferred: comma-separated, newest first, so keys can be rotated (docs/KEY_MANAGEMENT.md).
+FIELD_ENCRYPTION_KEYS = [k.strip() for k in os.environ.get('FIELD_ENCRYPTION_KEYS', '').split(',') if k.strip()]
 
 CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_TASK_ALWAYS_EAGER = sys.argv[1:2] == ['test']  # tests run tasks inline and never need Redis
