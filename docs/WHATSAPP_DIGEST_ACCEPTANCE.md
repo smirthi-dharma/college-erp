@@ -11,7 +11,7 @@ Verified by mutation: removing the consent guard, the signature check or the dou
 
 ## How to run it
 - Needs env vars (never in git): `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`,
-  `FIELD_ENCRYPTION_KEY` (generate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`), and `REDIS_URL`
+  `FIELD_ENCRYPTION_KEYS` (comma-separated, newest first; generate with `manage.py new_encryption_key`; rotation and backup in `docs/KEY_MANAGEMENT.md`), and `REDIS_URL`
   for the background worker.
 - Worker + scheduler: `celery -A college_management_system worker -B -l info`. Without Redis: `manage.py run_digest [--schema demo] [--ignore-time]`
   (also fine from cron: a day is never sent twice).
@@ -182,3 +182,14 @@ corrections made after the send time.
   may receive the message twice and needs a ticked box. Only the college admin; only `unknown` messages that never got a
   WhatsApp id; at most 3 times; only for messages of the last 7 days. The message goes back through the normal sender, so consent
   and the on/off switch are re-checked. Each resend is audited with who did it and counted on the row. A double click sends once.
+
+## Consent evidence (added 2026-11-11, branch `feat/consent-evidence`)
+Every consent decision is now a `main_app.ConsentRecord`: who recorded it (id, e-mail, role, copied), when, how (paper form,
+verbal, parent self-service, or the system for a WhatsApp STOP), a note, and an optional scan of the signed form. Records are
+append-only (a withdrawal is a new row); `Guardian.whatsapp_consent` is only the current answer, changed only through
+`main_app.consent.record_consent`. Verbal consent needs a note. The college admin's screen offers paper form and verbal only;
+"parent self-service" is reserved for the future parent portal so staff cannot claim it. Scans: PDF, PNG or JPEG, up to 5 MB,
+magic bytes checked, stored under a random name in the college's own media folder, and downloadable only by the college admin
+through a view (attachment, no-store), never from a public media URL. Guardians whose consent predates this show
+"No evidence on file". Known gaps: a scan is not virus-scanned; a deleted guardian's records are deleted with them (the DPDP
+erasure design must decide what proof to keep).

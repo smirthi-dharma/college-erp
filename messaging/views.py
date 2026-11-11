@@ -1,19 +1,21 @@
 import csv
 import datetime
 import json
+import os
 
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import connection
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
+from main_app import consent
 from main_app.access import COLLEGE_ADMIN, public_view, role_required
-from main_app.models import Guardian
+from main_app.models import ConsentRecord, Guardian
 
 from . import reports, services, tasks
 from . import webhook as hook
@@ -114,21 +116,47 @@ def usage_csv(request):
 def consent_page(request):
     if request.method == 'POST':
         guardian = get_object_or_404(Guardian, pk=request.POST.get('guardian'))
-        value, source = request.POST.get('value', ''), request.POST.get('source', '').strip()
-        if value not in (Guardian.CONSENT_YES, Guardian.CONSENT_NO):
-            messages.error(request, 'Choose yes or no.')
-        elif value == Guardian.CONSENT_YES and not source:
-            messages.error(request, 'Say how the consent was obtained (for example "signed admission form").')
-        else:
-            services.set_consent(guardian, value, source or 'Recorded by college admin')
+        try:
+            consent.record_consent(guardian, request.POST.get('value', ''), request.POST.get('method', ''), user=request.user,
+                                   note=request.POST.get('note', ''), scan=request.FILES.get('scan'))
             messages.success(request, 'Consent recorded.')
+        except consent.ConsentError as exc:
+            messages.error(request, str(exc))
         return redirect(request.get_full_path())
     q = request.GET.get('q', '').strip()
     guardians = Guardian.objects.order_by('full_name', 'id')
     if q:
         guardians = guardians.filter(full_name__icontains=q) | guardians.filter(phone__icontains=q)
     page = Paginator(guardians.order_by('full_name', 'id'), 50).get_page(request.GET.get('page'))
-    return render(request, 'messaging/consent.html', {'page': page, 'q': q, 'page_title': 'WhatsApp consent'})
+    latest = {}
+    for record in ConsentRecord.objects.filter(guardian__in=list(page)).order_by('recorded_at', 'id'):
+        latest[record.guardian_id] = record
+    for guardian in page:
+        guardian.latest_record = latest.get(guardian.pk)
+    return render(request, 'messaging/consent.html', {
+        'page': page, 'q': q, 'methods': [(value, label) for value, label in ConsentRecord.METHOD if value in consent.ADMIN_METHODS],
+        'page_title': 'WhatsApp consent'})
+
+
+@admin_only
+@require_GET
+def consent_history(request, pk):
+    guardian = get_object_or_404(Guardian, pk=pk)
+    return render(request, 'messaging/consent_history.html', {
+        'guardian': guardian, 'records': guardian.consent_records.all(), 'page_title': 'Consent history'})
+
+
+@admin_only
+@require_GET
+def consent_scan(request, pk):
+    """The signed form, to the college admin only (never from a public media URL)."""
+    record = get_object_or_404(ConsentRecord, pk=pk)
+    if not record.scan:
+        raise Http404('No scan')
+    response = FileResponse(record.scan.open('rb'), as_attachment=True, filename='consent-%s%s' % (record.pk, os.path.splitext(record.scan.name)[1]))
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Cache-Control'] = 'private, no-store'
+    return response
 
 
 @admin_only

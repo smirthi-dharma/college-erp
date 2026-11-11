@@ -12,7 +12,6 @@ from django.utils import timezone
 
 from colleges.models import MessageRoute
 from main_app import whatsapp
-from main_app.models import Guardian
 
 from . import digest, texts
 from .models import CollegeSecret, DigestMessage, DigestRun, DigestSettings, UsageRate
@@ -158,17 +157,6 @@ def sweep(now=None):
         message.save()
     return list(DigestMessage.objects.filter(status=DigestMessage.QUEUED, mode=DigestRun.LIVE,
                                              updated_at__lt=now - REQUEUE_AFTER).values_list('pk', flat=True))
-
-
-# --- consent ---------------------------------------------------------------------------------------------------
-
-def set_consent(guardian, value, source):
-    """The one audited way to record an answer (the screen and the STOP reply both come through here)."""
-    if value not in (Guardian.CONSENT_YES, Guardian.CONSENT_NO, Guardian.CONSENT_UNKNOWN):
-        raise ValueError('Unknown consent value.')
-    guardian.whatsapp_consent, guardian.consent_source = value, source[:200]
-    guardian.consent_recorded_at = timezone.now()
-    guardian.save()
 
 
 # --- sending an "unclear" message again ---------------------------------------------------------------------------
