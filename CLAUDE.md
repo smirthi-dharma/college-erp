@@ -55,7 +55,14 @@ Super admin, Management/Principal, IQAC coordinator, HoD, Faculty, Office staff
 ## Current status
 Demo data: `manage.py seed_demo [--schema demo]` (after `create_demo_college`) adds a programme, section, 2 subjects, 10 students with 9 guardians (mixed WhatsApp consent, two siblings), enrolments and 10 days of attendance; idempotent, demo schemas only (name must start with `demo`), never overwrites edits.
 
-Last updated: 2026-11-10 (session 5, after PRs #9-#12 merged; 308 tests, about 30 s)
+Last updated: 2026-11-11 (session 6, hardening week: five PRs open, see below; 378 tests on main, about 33 s)
+
+### Hardening week (2026-11-11), one PR each, none merged yet when this was written
+- `feat/consent-evidence`: every consent decision is an append-only `ConsentRecord` (who, when, how: paper form / verbal / parent self-service / system STOP; optional scan of the signed form, PDF/PNG/JPEG up to 5 MB, private download for the college admin only). Staff cannot claim "parent self-service".
+- `feat/key-rotation`: `FIELD_ENCRYPTION_KEYS` (comma list, newest first, MultiFernet), `rotate_encryption_keys [--check]`, `new_encryption_key`, `docs/KEY_MANAGEMENT.md` (includes how to back the key up).
+- `chore/staging-workers` (stacked on PR #13, merge #13 first): `docker-compose.yml` with web, Celery worker, Celery beat (exactly one), private Redis; only web migrates; static tests guard the files; `docs/STAGING_SETUP.md` updated. Never built or run (no Docker here, no staging yet).
+- `feat/retention-resend`: message log kept 12 months (setting 1-60, nightly 03:30 IST task, `purge_message_log`), audited admin "Send again" for unclear messages (warning, max 3, within 7 days).
+- `docs/demo-script`: `docs/DEMO_SCRIPT.md`, the 10-minute principal click path, run end to end on seed_demo data.
 
 ### Pilot items at a glance (checked 2026-11-10, after PR #8)
 | # | Item | State | Notes |
