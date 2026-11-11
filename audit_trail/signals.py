@@ -22,7 +22,7 @@ from .models import AuditLog
 logger = logging.getLogger(__name__)
 
 # Never stored, not even as a marker of the old value.
-REDACTED_FIELDS = {'password', 'fcm_token'}
+REDACTED_FIELDS = {'password', 'fcm_token', 'ciphertext'}
 # Personal data: we record that the field changed, not its value, so that the log never
 # blocks an erasure request (DPDP Act) and never leaks names/addresses to log readers.
 MASKED_FIELDS = {'first_name', 'last_name', 'email', 'address', 'gender', 'profile_pic',
@@ -36,7 +36,9 @@ MASKED = '[personal data]'
 
 def _audited_models():
     labels = getattr(settings, 'AUDIT_APPS', [])
-    return [m for label in labels for m in apps.get_app_config(label).get_models()]
+    # A model with `audit_exempt = True` is itself a system-written log (WhatsApp message rows): auditing it would
+    # only duplicate every status change.
+    return [m for label in labels for m in apps.get_app_config(label).get_models() if not getattr(m, 'audit_exempt', False)]
 
 
 def connect():

@@ -112,18 +112,18 @@ class ConsentGuardTests(ImportTestBase):
                 guardian = self.guardian('unknown')
                 Guardian.objects.filter(pk=guardian.pk).update(whatsapp_consent=consent)
                 with self.assertRaises(whatsapp.ConsentRequired):
-                    whatsapp.send_whatsapp(guardian, 'hello')
+                    whatsapp.send_template(guardian, 'absence_digest', 'en', ['x'])
                 Guardian.objects.filter(pk=guardian.pk).delete()
             transport.assert_not_called()
 
     def test_yes_passes_and_a_withdrawal_is_honoured_even_with_a_stale_object(self):
-        with mock.patch('main_app.whatsapp._transport', return_value='sent') as transport, tenant_context(self.college_a):
+        with mock.patch('main_app.whatsapp._transport', return_value=whatsapp.Sent('wamid.1')) as transport, tenant_context(self.college_a):
             guardian = self.guardian('yes')
-            self.assertEqual(whatsapp.send_whatsapp(guardian, 'hi'), 'sent')
-            transport.assert_called_once_with('+919000000009', 'hi')
+            self.assertEqual(whatsapp.send_template(guardian, 'absence_digest', 'en', ['hi']).wamid, 'wamid.1')
+            transport.assert_called_once_with('+919000000009', 'absence_digest_en', 'en', ['hi'], None)
             Guardian.objects.filter(pk=guardian.pk).update(whatsapp_consent='no')  # withdrawn elsewhere; guardian is stale
             with self.assertRaises(whatsapp.ConsentRequired):
-                whatsapp.send_whatsapp(guardian, 'again')
+                whatsapp.send_template(guardian, 'absence_digest', 'en', ['again'])
             self.assertEqual(transport.call_count, 1)
 
     def test_no_other_code_may_call_the_transport(self):

@@ -197,7 +197,7 @@ class Guardian(models.Model):
     """A parent or guardian as a person (a contact record; no login yet). One person can have several children.
 
     Consent to WhatsApp messages belongs to the person. It is `unknown` until the consent feature records an
-    answer; main_app.whatsapp.send_whatsapp refuses to send unless it is exactly `yes`.
+    answer; main_app.whatsapp.send_template refuses to send unless it is exactly `yes`.
     """
     CONSENT_UNKNOWN, CONSENT_YES, CONSENT_NO = 'unknown', 'yes', 'no'
     CONSENT = [(CONSENT_UNKNOWN, 'Unknown'), (CONSENT_YES, 'Yes'), (CONSENT_NO, 'No')]
@@ -206,6 +206,11 @@ class Guardian(models.Model):
     phone = models.CharField(max_length=13)  # +91XXXXXXXXXX, unique per college
     email = models.EmailField(blank=True, default="")
     whatsapp_consent = models.CharField(max_length=7, choices=CONSENT, default=CONSENT_UNKNOWN)
+    # How and when the answer was recorded (for the DPDP consent record); blank until someone records one.
+    consent_source = models.CharField(max_length=200, blank=True, default="")
+    consent_recorded_at = models.DateTimeField(null=True, blank=True)
+    # '' = use the college's default language for WhatsApp messages
+    preferred_language = models.CharField(max_length=2, blank=True, default="", choices=[('en', 'English'), ('ta', 'Tamil')])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

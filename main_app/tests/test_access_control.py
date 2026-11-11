@@ -20,7 +20,8 @@ from .world import SECRET_NOTE, STUD2_EXAM, STUD2_TEST, WorldTestCase
 FRAMEWORK_MODULES = ('django.contrib.admin', 'django.contrib.auth.views', 'django.views.static')
 
 # The ONLY pages reachable without logging in. Adding a public page means adding it here on purpose.
-EXPECTED_PUBLIC_VIEWS = {'login_page', 'user_login', 'showFirebaseJS', 'accounts/login/'}
+EXPECTED_PUBLIC_VIEWS = {'login_page', 'user_login', 'showFirebaseJS', 'accounts/login/',
+                         'whatsapp_webhook'}  # Meta's callback: no login, protected by its signature check
 
 
 ADMIN_PREFIX = '/platform-admin/'  # the 2FA, platform-staff-only Django admin (tested in test_admin_2fa.py)

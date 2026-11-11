@@ -1,0 +1,26 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <p><a href="{% url 'messaging_report' %}">Daily report</a> &middot; <a href="{% url 'messaging_usage' %}">Usage and cost</a> &middot; <a href="{% url 'messaging_consent' %}">Guardian consent</a></p>
+  {% if settings.state != 'ok' %}<div class="alert alert-danger"><strong>Needs attention:</strong> {{ settings.state_reason }} The digest is paused until you fix this and tick the box below.</div>{% endif %}
+  {% if not settings.enabled %}<div class="alert alert-secondary">The digest is <strong>off</strong>. No message is built or sent.</div>
+  {% elif settings.dry_run %}<div class="alert alert-info">The digest is on in <strong>dry run</strong>: messages are written down in the report but nothing is sent to anyone.</div>
+  {% else %}<div class="alert alert-warning">The digest is <strong>live</strong>: guardians who said yes get a WhatsApp message every day at {{ settings.send_time|time:"H:i" }}.</div>{% endif %}
+  <div class="card"><div class="card-header"><h3 class="card-title">Absence digest settings</h3></div>
+  <form method="post" class="card-body">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% if field.name == 'clear_attention' and settings.state == 'ok' %}{% else %}
+      <div class="form-group">
+        {% if field.field.widget.input_type == 'checkbox' %}<div class="form-check"><input type="checkbox" class="form-check-input" name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %}><label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+        {% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+        {% if field.name == 'access_token' and token_last4 %}<small class="text-muted">A token ending in <code>****{{ token_last4 }}</code> is saved.</small>{% endif %}
+        {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </div>{% endif %}
+    {% endfor %}
+    <button class="btn btn-primary" type="submit">Save</button>
+  </form></div>
+</div></section>
+{% endblock content %}

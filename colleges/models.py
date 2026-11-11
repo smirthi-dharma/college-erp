@@ -21,3 +21,17 @@ class College(TenantMixin):
 
 class Domain(DomainMixin):
     """Subdomain(s) that route to a college, e.g. demo.ourerp.in."""
+
+
+class MessageRoute(models.Model):
+    """Which college a WhatsApp message id belongs to.
+
+    Meta calls ONE webhook URL for every college, and its delivery reports carry only the message id, so this public
+    table maps an id back to the college that sent it. It holds no message text and no phone number.
+    """
+    wamid = models.CharField(max_length=200, unique=True)
+    college = models.ForeignKey(College, on_delete=models.CASCADE, related_name='message_routes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return 'Message route #%s' % self.pk
