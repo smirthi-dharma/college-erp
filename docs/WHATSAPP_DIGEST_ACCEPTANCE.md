@@ -171,3 +171,14 @@ corrections made after the send time.
 - Q7. **How long to keep the message log** (it holds child names). Recommend 12 months, configurable, and deleted with the
   student's data when a DPDP deletion is processed.
 - Q8. **Tamil text.** Who will check the Tamil template wording before it goes to Meta (a faculty member)?
+
+## Consent evidence (added 2026-11-11, branch `feat/consent-evidence`)
+Every consent decision is now a `main_app.ConsentRecord`: who recorded it (id, e-mail, role, copied), when, how (paper form,
+verbal, parent self-service, or the system for a WhatsApp STOP), a note, and an optional scan of the signed form. Records are
+append-only (a withdrawal is a new row); `Guardian.whatsapp_consent` is only the current answer, changed only through
+`main_app.consent.record_consent`. Verbal consent needs a note. The college admin's screen offers paper form and verbal only;
+"parent self-service" is reserved for the future parent portal so staff cannot claim it. Scans: PDF, PNG or JPEG, up to 5 MB,
+magic bytes checked, stored under a random name in the college's own media folder, and downloadable only by the college admin
+through a view (attachment, no-store), never from a public media URL. Guardians whose consent predates this show
+"No evidence on file". Known gaps: a scan is not virus-scanned; a deleted guardian's records are deleted with them (the DPDP
+erasure design must decide what proof to keep).

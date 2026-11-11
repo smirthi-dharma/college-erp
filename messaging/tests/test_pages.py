@@ -135,19 +135,21 @@ class SettingsAndSecretTests(DigestTestCase):
 
 
 class ConsentScreenTests(DigestTestCase):
-    def test_q6_yes_needs_a_source_and_is_audited_then_a_digest_goes_out(self):
+    def test_q6_yes_is_recorded_as_evidence_audited_and_a_digest_goes_out(self):
         from audit_trail.models import AuditLog
-        from main_app.models import Guardian
+        from main_app.models import ConsentRecord, Guardian
         with self.t():
             Guardian.objects.filter(pk=self.g_sib.pk).update(whatsapp_consent='unknown')
         client = self.as_user(self.admin)
-        client.post('/messaging/consent/', {'guardian': self.g_sib.pk, 'value': 'yes', 'source': ''})
+        client.post('/messaging/consent/', {'guardian': self.g_sib.pk, 'value': 'yes', 'method': ''})
         with self.t():
-            self.assertEqual(Guardian.objects.get(pk=self.g_sib.pk).whatsapp_consent, 'unknown')  # refused: no source
-        client.post('/messaging/consent/', {'guardian': self.g_sib.pk, 'value': 'yes', 'source': 'Signed admission form 2026'})
+            self.assertEqual(Guardian.objects.get(pk=self.g_sib.pk).whatsapp_consent, 'unknown')  # refused: no method
+        client.post('/messaging/consent/', {'guardian': self.g_sib.pk, 'value': 'yes', 'method': 'paper_form', 'note': 'Admission form 2026'})
         with self.t():
             guardian = Guardian.objects.get(pk=self.g_sib.pk)
-            self.assertEqual((guardian.whatsapp_consent, guardian.consent_source), ('yes', 'Signed admission form 2026'))
+            self.assertEqual(guardian.whatsapp_consent, 'yes')
+            self.assertEqual(guardian.consent_source, 'Paper form: Admission form 2026')
+            self.assertEqual(ConsentRecord.objects.filter(guardian=guardian).count(), 1)
             self.assertTrue(AuditLog.objects.filter(model_label='main_app.Guardian', actor_email='admin@a.in').exists())
         _, ids = self.start()
         self.assertEqual(len(ids), 1)
@@ -156,7 +158,7 @@ class ConsentScreenTests(DigestTestCase):
         client = self.as_user(self.admin)
         self.assertContains(client.get('/messaging/consent/?q=Sib'), 'Mr Sib')
         self.assertNotContains(client.get('/messaging/consent/?q=Sib'), 'Mrs Other')
-        before = client.post('/messaging/consent/', {'guardian': self.g_sib.pk, 'value': 'maybe'})
+        before = client.post('/messaging/consent/', {'guardian': self.g_sib.pk, 'value': 'maybe', 'method': 'paper_form'})
         self.assertEqual(before.status_code, 302)
         self.assertEqual(client.post('/messaging/consent/', {'guardian': 99999, 'value': 'no'}).status_code, 404)
 

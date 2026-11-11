@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models.functions import Lower
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 
 class CustomUserManager(UserManager):
@@ -242,6 +243,68 @@ class StudentGuardian(models.Model):
 
     def __str__(self):
         return 'Link #%s' % self.pk
+
+
+class ConsentRecordImmutable(Exception):
+    pass
+
+
+class ConsentRecordQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ConsentRecordImmutable('Consent records cannot be modified.')
+
+    def delete(self):
+        raise ConsentRecordImmutable('Consent records cannot be deleted.')
+
+    def bulk_update(self, *args, **kwargs):
+        raise ConsentRecordImmutable('Consent records cannot be modified.')
+
+
+def consent_scan_path(instance, filename):
+    """A random name: the uploaded file name is never used on disk (no path tricks, no guessing)."""
+    import os
+    import uuid
+    return 'consent_scans/%s%s' % (uuid.uuid4().hex, os.path.splitext(filename)[1].lower())
+
+
+class ConsentRecord(models.Model):
+    """Evidence of one consent decision by a guardian: who recorded it, when, how, and the signed form if there is one.
+
+    Append-only: a withdrawal is a new row, never an edit, so the history stays as proof (DPDP Act). Guardian.whatsapp_consent
+    is only the current answer; this table is the evidence behind it. The scan is private: it is served only to the college
+    admin through a view, never from a public media URL.
+    """
+    PAPER_FORM, VERBAL, SELF_SERVICE, WHATSAPP_STOP = 'paper_form', 'verbal', 'parent_self_service', 'whatsapp_stop'
+    METHOD = [(PAPER_FORM, 'Paper form'), (VERBAL, 'Verbal'), (SELF_SERVICE, 'Parent self-service'),
+              (WHATSAPP_STOP, 'Replied STOP on WhatsApp')]
+
+    guardian = models.ForeignKey('Guardian', on_delete=models.CASCADE, related_name='consent_records')
+    value = models.CharField(max_length=7, choices=[('yes', 'Yes'), ('no', 'No')])
+    method = models.CharField(max_length=20, choices=METHOD)
+    note = models.CharField(max_length=300, blank=True, default='')
+    scan = models.FileField(upload_to=consent_scan_path, null=True, blank=True)
+    # Who recorded it, copied so the record survives the user being deleted. Empty id = the system (a WhatsApp reply).
+    recorded_by_id = models.BigIntegerField(null=True, blank=True)
+    recorded_by_email = models.CharField(max_length=254, blank=True, default='')
+    recorded_by_role = models.CharField(max_length=1, blank=True, default='')
+    recorded_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    objects = ConsentRecordQuerySet.as_manager()
+    audit_exempt = True  # it is itself an append-only log
+
+    class Meta:
+        ordering = ['-recorded_at', '-id']
+
+    def __str__(self):
+        return 'Consent %s by %s (%s)' % (self.value, self.recorded_by_email or 'system', self.method)
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ConsentRecordImmutable('Consent records cannot be modified.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ConsentRecordImmutable('Consent records cannot be deleted.')
 
 
 class StudentResult(models.Model):

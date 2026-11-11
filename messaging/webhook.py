@@ -12,11 +12,11 @@ from django.db import transaction
 from django_tenants.utils import tenant_context
 
 from colleges.models import College, MessageRoute
-from main_app.models import Guardian
+from main_app.consent import record_consent
+from main_app.models import ConsentRecord, Guardian
 
 from . import texts
 from .models import DeliveryEvent, DigestMessage, UsageRate
-from .services import set_consent
 
 logger = logging.getLogger(__name__)
 
@@ -94,4 +94,4 @@ def handle_reply(inbound):
     for college in College.objects.exclude(schema_name='public'):
         with tenant_context(college):
             for guardian in Guardian.objects.filter(phone=phone).exclude(whatsapp_consent=Guardian.CONSENT_NO):
-                set_consent(guardian, Guardian.CONSENT_NO, 'Replied STOP on WhatsApp')
+                record_consent(guardian, Guardian.CONSENT_NO, ConsentRecord.WHATSAPP_STOP)
