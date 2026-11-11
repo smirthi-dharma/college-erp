@@ -17,6 +17,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -293,4 +294,5 @@ CELERY_TIMEZONE = 'Asia/Kolkata'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BEAT_SCHEDULE = {
     'dispatch-whatsapp-digests': {'task': 'messaging.tasks.dispatch_due_digests', 'schedule': 60.0},
+    'purge-old-whatsapp-messages': {'task': 'messaging.tasks.purge_old_messages', 'schedule': crontab(hour=3, minute=30)},  # 03:30 IST
 }

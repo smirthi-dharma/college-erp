@@ -7,6 +7,7 @@ because every status change would otherwise be written twice; DeliveryEvent is a
 import datetime
 from decimal import Decimal
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -25,6 +26,10 @@ class DigestSettings(models.Model):
     primary_guardian_only = models.BooleanField(default=True)
     # Optional own WhatsApp number for this college; blank = the platform number. The token is in CollegeSecret.
     phone_number_id = models.CharField(max_length=40, blank=True, default='')
+    # Message rows (they hold child names) older than this are deleted every night.
+    retention_months = models.PositiveSmallIntegerField(default=12, validators=[MinValueValidator(1), MaxValueValidator(60)])
+    last_purge_at = models.DateTimeField(null=True, blank=True)
+    last_purge_count = models.PositiveIntegerField(default=0)
     state = models.CharField(max_length=20, default=OK)
     state_reason = models.CharField(max_length=300, blank=True, default='')
     updated_at = models.DateTimeField(auto_now=True)
@@ -130,6 +135,9 @@ class DigestMessage(models.Model):
     category = models.CharField(max_length=20, blank=True, default='')
     billed_rate = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    resend_count = models.PositiveSmallIntegerField(default=0)  # times an admin sent an "unclear" message again
+    last_resent_at = models.DateTimeField(null=True, blank=True)
+    last_resent_by = models.CharField(max_length=254, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

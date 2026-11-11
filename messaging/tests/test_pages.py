@@ -61,7 +61,7 @@ class SettingsAndSecretTests(DigestTestCase):
         from audit_trail.models import AuditLog
         client = self.as_user(self.admin)
         response = client.post('/messaging/', {'dry_run': 'on', 'enabled': 'on', 'send_time': '16:30', 'default_language': 'ta',
-                                               'primary_guardian_only': 'on', 'phone_number_id': ''})
+                                               'primary_guardian_only': 'on', 'phone_number_id': '', 'retention_months': '12'})
         self.assertEqual(response.status_code, 302)
         with self.t():
             entry = AuditLog.objects.filter(model_label='messaging.DigestSettings', action='update').latest('id')
@@ -74,7 +74,7 @@ class SettingsAndSecretTests(DigestTestCase):
         from messaging.models import CollegeSecret
         client = self.as_user(self.admin)
         form = {'enabled': 'on', 'send_time': '17:00', 'default_language': 'en', 'primary_guardian_only': 'on',
-                'phone_number_id': '555000111', 'access_token': TOKEN}
+                'phone_number_id': '555000111', 'access_token': TOKEN, 'retention_months': '12'}
         self.assertEqual(client.post('/messaging/', form).status_code, 302)
         with self.t():
             secret = CollegeSecret.objects.get(name='whatsapp_access_token')
@@ -103,7 +103,7 @@ class SettingsAndSecretTests(DigestTestCase):
         self.assertNotIn(TOKEN, repr(creds))
 
     def test_06_a_phone_number_without_a_token_is_rejected(self):
-        form = {'enabled': 'on', 'send_time': '17:00', 'default_language': 'en', 'phone_number_id': '555'}
+        form = {'enabled': 'on', 'send_time': '17:00', 'default_language': 'en', 'phone_number_id': '555', 'retention_months': '12'}
         response = self.as_user(self.admin).post('/messaging/', form)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'needs its access token')
@@ -129,7 +129,7 @@ class SettingsAndSecretTests(DigestTestCase):
         client = self.as_user(self.admin)
         self.assertContains(client.get('/messaging/'), 'Needs attention')
         self.assertContains(client.get('/messaging/report/'), 'WhatsApp rejected the access token.')
-        client.post('/messaging/', {'enabled': 'on', 'send_time': '17:00', 'default_language': 'en', 'clear_attention': 'on'})
+        client.post('/messaging/', {'enabled': 'on', 'send_time': '17:00', 'default_language': 'en', 'clear_attention': 'on', 'retention_months': '12'})
         with self.t():
             self.assertEqual(DigestSettings.current().state, 'ok')
 

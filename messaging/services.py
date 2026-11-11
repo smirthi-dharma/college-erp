@@ -157,3 +157,50 @@ def sweep(now=None):
         message.save()
     return list(DigestMessage.objects.filter(status=DigestMessage.QUEUED, mode=DigestRun.LIVE,
                                              updated_at__lt=now - REQUEUE_AFTER).values_list('pk', flat=True))
+
+
+# --- sending an "unclear" message again ---------------------------------------------------------------------------
+
+MAX_RESENDS = 3
+MAX_RESEND_AGE_DAYS = 7  # an absence notice that old would only confuse a parent
+
+
+class ResendError(Exception):
+    """The resend is refused; the message is safe to show to the admin."""
+
+
+def resend(message_id, user, now=None):
+    """Put an `unknown` live message back in the queue. The caller then hands it to a worker.
+
+    This CAN deliver a second copy: `unknown` means WhatsApp may already have accepted the first one. It is therefore
+    never automatic, only for the college admin, only for messages of the last 7 days, at most 3 times, and recorded in
+    the audit log with who did it.
+    """
+    from audit_trail.models import AuditLog
+    from main_app.models import CustomUser
+    now = now or timezone.now()
+    if user is None or user.user_type != CustomUser.COLLEGE_ADMIN:
+        raise ResendError('Only the college admin can send a message again.')
+    with transaction.atomic():
+        message = DigestMessage.objects.select_for_update().filter(pk=message_id).first()
+        if message is None:
+            raise ResendError('That message does not exist.')
+        if message.mode != DigestRun.LIVE or message.status != DigestMessage.UNKNOWN:
+            raise ResendError('Only a message whose outcome is unclear can be sent again.')
+        if message.wamid:
+            raise ResendError('WhatsApp already accepted this message, so it does not need sending again.')
+        if message.resend_count >= MAX_RESENDS:
+            raise ResendError('This message has already been sent again %d times.' % MAX_RESENDS)
+        if (timezone.localtime(now).date() - message.digest_date).days > MAX_RESEND_AGE_DAYS:
+            raise ResendError('This message is older than %d days; it is too late to send it.' % MAX_RESEND_AGE_DAYS)
+        earlier = message.last_error
+        message.status, message.attempts = DigestMessage.QUEUED, 0
+        message.resend_count += 1
+        message.last_resent_at, message.last_resent_by = now, user.email
+        message.last_error = ('Sent again by %s (earlier outcome: %s)' % (user.email, earlier))[:400]
+        message.save()
+        AuditLog.objects.create(
+            action=AuditLog.Action.UPDATE, actor_id=user.pk, actor_email=user.email, actor_role=str(user.user_type),
+            model_label='messaging.DigestMessage', object_pk=str(message.pk), object_repr='WhatsApp message #%s resent' % message.pk,
+            changes={'status': ['unknown', 'queued'], 'resend_count': [message.resend_count - 1, message.resend_count]})
+    return message
