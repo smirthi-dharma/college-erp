@@ -22,6 +22,10 @@ x-app: &app
     WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
     WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
     WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-staging}
+    GIT_COMMIT: ${SOURCE_COMMIT:-}   # Coolify sets SOURCE_COMMIT: names the release in Sentry and versions the PWA caches
+    CSP_REPORT_ONLY: ${CSP_REPORT_ONLY:-}
   depends_on:
     redis:
       condition: service_healthy
@@ -33,6 +37,12 @@ services:
       - "8000"
     volumes:
       - media:/app/media   # uploaded files (consent scans, profile pictures), one folder per college
+    healthcheck:   # /healthz answers on any host over plain http (main_app/health.py); 503 when the database is unreachable
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   worker:
     <<: *app
@@ -50,6 +60,26 @@ services:
     # The scheduler: starts each college's digest once its send time has passed. Run EXACTLY ONE of these. The message
     # rows are unique per guardian and day, so a second one could not double-send, but it would waste work.
     command: ["celery", "-A", "college_management_system", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+
+  backup:
+    # Nightly encrypted backup of the database and the uploaded files to Cloudflare R2 (docs/BACKUPS.md). Sleeps until 02:00
+    # India time, runs deploy/backup/backup.sh, repeats. Needs the R2 variables below: compose refuses to start without them, so
+    # staging cannot silently run with no backups. The files volume is mounted read-only.
+    build: .
+    restart: unless-stopped
+    command: ["/app/deploy/backup/run_nightly.sh"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL (Supabase session pooler, port 5432)}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?set BACKUP_PASSPHRASE (see docs/BACKUPS.md, keep a copy off the server)}
+      BACKUP_DEST: ${BACKUP_DEST:?set BACKUP_DEST (s3://your-bucket)}
+      R2_ENDPOINT: ${R2_ENDPOINT:?set R2_ENDPOINT (https://<account id>.r2.cloudflarestorage.com)}
+      AWS_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?set R2_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: auto
+      BACKUP_PING_URL: ${BACKUP_PING_URL:-}
+      MEDIA_ROOT: /app/media
+    volumes:
+      - media:/app/media:ro
 
   redis:
     image: redis:7-alpine

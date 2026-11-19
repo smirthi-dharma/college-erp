@@ -33,9 +33,11 @@ the same time stamp. The database is dumped first and the files second, so every
    read the data.** Rotating it is a new passphrase for new backups; old files still need the old one, so keep old ones too.
 5. **Dead-man's switch** (recommended): create a free check at healthchecks.io (or similar) expecting a ping every 24 h; put its
    URL in `BACKUP_PING_URL`. A silent failure then becomes an e-mail the next morning. The script calls `<url>/fail` on errors.
-6. **Tools on the machine that runs the job:** `postgresql-client-17`, `gnupg`, `awscli`, `curl`. The current Dockerfile (PR #13)
-   does not install them yet; add them there or run the job from a small separate container. Do this when you set up staging.
-7. **Schedule** it as a Coolify scheduled task with the environment below.
+6. **Tools:** `postgresql-client`, `gnupg`, `awscli` and `curl` are installed in the app image (Dockerfile), and the compose stack has a `backup`
+   service that runs `deploy/backup/run_nightly.sh` (it waits for 02:00 India time, runs the backup, repeats). The package installation is unverified
+   until the first real build (see `docs/STAGING_SETUP.md`, known gaps).
+7. **Schedule:** nothing to do: the `backup` service in `docker-compose.yml` is the schedule. Set the variables it requires in Coolify
+   (`docs/STAGING_SETUP.md` section E); the stack refuses to start without them.
 
 ```bash
 # environment for the scheduled task (values come from Coolify secrets)
@@ -48,7 +50,7 @@ AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...
 BACKUP_PING_URL=https://hc-ping.com/<your check id>
 ```
 
-Command: `deploy/backup/backup.sh`. First run it by hand with `DRY_RUN=1` to see the plan, then once for real, then confirm the file
+Command: `deploy/backup/backup.sh`, or in the `backup` container `/app/deploy/backup/run_nightly.sh --once`. First run it with `DRY_RUN=1` to see the plan, then once for real, then confirm the file
 is in the bucket and run the restore test below straight away: **a backup that has never been restored is not a backup.**
 
 ## 3. The monthly restore test (30 minutes, first working day of the month)
