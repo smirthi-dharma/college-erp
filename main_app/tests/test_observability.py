@@ -5,7 +5,7 @@ from unittest import mock
 from django.test import SimpleTestCase
 
 from college_management_system import observability
-from college_management_system.observability import init_sentry, mask, scrub_event
+from college_management_system.observability import WITHHELD, init_sentry, scrub_event
 
 
 class SwitchTests(SimpleTestCase):
@@ -57,11 +57,14 @@ class ScrubTests(SimpleTestCase):
     def test_what_helps_debugging_is_kept(self):
         cleaned = scrub_event(self.event())
         self.assertEqual(cleaned['request']['url'], 'https://demo.ourerp.in/students/5/')
+        self.assertEqual(scrub_event({'request': {'url': 'https://demo.ourerp.in/students/?q=Asha#top'}})['request']['url'],
+                         'https://demo.ourerp.in/students/')
         self.assertEqual(cleaned['request']['method'], 'POST')
         self.assertEqual(cleaned['exception']['values'][0]['type'], 'ValueError')
         self.assertEqual(cleaned['exception']['values'][0]['stacktrace']['frames'][0]['function'], 'f')
-        self.assertIn('[phone]', cleaned['message'])
-        self.assertIn('[email]', cleaned['message'])
+        self.assertEqual(cleaned['message'], WITHHELD)
+        self.assertEqual(cleaned['exception']['values'][0]['value'], WITHHELD)
+        self.assertEqual(cleaned['logentry']['formatted'], WITHHELD)
 
     def test_the_college_is_attached_as_a_tag(self):
         with mock.patch('django.db.connection.schema_name', 'demo', create=True):
@@ -72,7 +75,3 @@ class ScrubTests(SimpleTestCase):
     def test_an_odd_event_never_breaks_the_scrubber_or_gets_dropped(self):
         for event in ({}, {'request': None}, {'exception': None}, {'exception': {'values': [{'value': None}]}}, {'message': 5}):
             self.assertIsNotNone(scrub_event(dict(event)))
-
-    def test_mask_leaves_ordinary_numbers_alone(self):
-        self.assertEqual(mask('class 10 had 148 students on 2026-11-19, rows 123456'), 'class 10 had 148 students on 2026-11-19, rows 123456')
-        self.assertEqual(mask('x@y.in'), '[email]')

@@ -92,16 +92,24 @@ on the public name, alerting you by e-mail or WhatsApp.
 
 ## 6. Error tracking (Sentry)
 
-Off unless `SENTRY_DSN` is set. When on, it is configured for a system full of student data: no request bodies, cookies,
-headers, user, query strings, breadcrumbs or local variables; e-mail addresses and phone numbers in error messages are masked;
-no performance tracing; the college's schema name is added as a tag so an error can be traced to one college. Tests cover the
-scrubber (`main_app/tests/test_observability.py`).
+Off unless `SENTRY_DSN` is set. The rule: send only what we control and nothing that can carry a person's data. An error report
+holds the exception type, the stack of code locations, the request method and path (no query string), the release, the
+environment and the college's schema name as a tag. It never holds request bodies, cookies, headers, user, local variables,
+breadcrumbs, extra data, or the **text** of exception and log messages (a database error or an f-string can contain a name, an
+e-mail address, a phone number or a roll number, and a name or a roll number cannot be recognised by pattern). The text is
+replaced by a fixed notice; to debug, use the type, the stack and the path, and reproduce with demo data. No performance tracing.
 
-Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (staging or production) and `GIT_COMMIT` in Coolify. **Decide the region before creating
-the project:** Sentry's data centres are in the US and the EU, not India. With the scrubbing above no personal data is sent, but
-the DPDP "India data residency" rule in `CLAUDE.md` is about personal data, so confirm you are comfortable, or self-host Sentry
-later. After the first deploy, raise a test error on staging and open it in Sentry to confirm there is no name, e-mail, phone or
-request body in it. Create an alert rule: e-mail on any new issue.
+**Proved by test:** `student360/tests/test_error_reporting.py` starts a real Sentry client with the project's settings and
+raises real errors through the real WSGI application with Sentry's WSGI layer (the same path as gunicorn): from a student's page,
+from a search for a name, from an admin form post that is logged with its data, from a log line and outside a request. Each
+carries names, phone numbers, e-mail addresses, a roll number, an address, a date of birth, a guardian's name and phone, an
+uploaded file name and a password. Every event that would be sent is searched for every one of those values; the test also
+fails if nothing was captured, so it cannot pass by doing nothing. It was mutation-checked (leaving the exception text, the
+request data or the cookies in each makes it fail).
+
+Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (staging or production) and `GIT_COMMIT` in Coolify. **Region: US or EU is accepted
+(decided 2026-11-19)**; with the above, no personal data leaves India. After the first deploy, raise a test error on staging and
+open it in Sentry to confirm it shows no name, e-mail, phone or request body. Create an alert rule: e-mail on any new issue.
 
 ## 7. Not covered yet (be honest with colleges about these)
 
