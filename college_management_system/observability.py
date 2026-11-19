@@ -1,21 +1,19 @@
 """Error tracking with Sentry, switched on only when SENTRY_DSN is set, and configured not to send personal data.
 
 A college ERP holds students' and parents' personal data (DPDP Act), so an error report must carry the error and where it
-happened, not who it happened to: no request bodies, cookies, headers, user, query strings or local variables, e-mail
-addresses and phone numbers masked in messages, and the college's schema name attached as a tag so an error can be traced to
-one tenant. Sentry's servers are outside India: with this scrubbing no personal data leaves, but see docs/BACKUPS.md
-(Error tracking) for the region choice and for how to confirm it.
+happened, not who it happened to. Names and roll numbers cannot be recognised by pattern, so the rule is to send only what we
+control: the exception type, the stack of code locations, the request method and path (no query string), the release, and
+the college's schema name as a tag. Everything that can carry a person's data is removed: request bodies, cookies, headers,
+query strings, user, local variables, breadcrumbs, extra data, and the text of exception and log messages (a database error or
+an f-string can contain a name, an e-mail or a roll number). The text is replaced by a fixed notice; to debug, use the type, the
+stack and the path, and reproduce with demo data. Sentry's servers are in the US/EU (accepted 2026-11-19, see docs/BACKUPS.md).
+A test (student360/tests/test_error_reporting.py) raises real errors from a student's page and a form post and checks that no
+name, phone, e-mail, roll number, address, date of birth or guardian name is in what would be sent.
 """
 import os
-import re
 
-EMAIL = re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+')
-PHONE = re.compile(r'(?<!\d)(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}(?!\d)')
 REQUEST_PARTS = ('data', 'cookies', 'headers', 'query_string', 'env')
-
-
-def mask(text):
-    return PHONE.sub('[phone]', EMAIL.sub('[email]', text)) if isinstance(text, str) else text
+WITHHELD = '[message withheld: it may contain personal data]'
 
 
 def scrub_event(event, hint=None):
@@ -24,18 +22,21 @@ def scrub_event(event, hint=None):
     if isinstance(request, dict):
         for part in REQUEST_PARTS:
             request.pop(part, None)
-    event.pop('user', None)
-    event.pop('extra', None)
-    event.pop('breadcrumbs', None)
-    if isinstance(event.get('message'), str):
-        event['message'] = mask(event['message'])
+        if isinstance(request.get('url'), str):
+            request['url'] = request['url'].split('?', 1)[0].split('#', 1)[0]  # a search box puts names in the query
+    for key in ('user', 'extra', 'breadcrumbs', 'contexts_user', 'spans'):
+        event.pop(key, None)
+    if isinstance(event.get('_meta'), dict):
+        event['_meta'].pop('request', None)  # Sentry's own note of which header names it removed
+    if event.get('message') is not None:
+        event['message'] = WITHHELD
     logentry = event.get('logentry')
     if isinstance(logentry, dict):
-        for key in ('message', 'formatted'):
-            logentry[key] = mask(logentry.get(key))
+        logentry['message'] = logentry['formatted'] = WITHHELD
         logentry.pop('params', None)
     for exception in (event.get('exception') or {}).get('values', []):
-        exception['value'] = mask(exception.get('value'))
+        if exception.get('value') is not None:
+            exception['value'] = WITHHELD
         for frame in (exception.get('stacktrace') or {}).get('frames', []):
             frame.pop('vars', None)
     try:
@@ -48,8 +49,8 @@ def scrub_event(event, hint=None):
     return event
 
 
-def init_sentry(environ=None):
-    """Start Sentry if SENTRY_DSN is set. Returns True when it was started."""
+def init_sentry(environ=None, transport=None):
+    """Start Sentry if SENTRY_DSN is set. Returns True when it was started. `transport` is only for tests."""
     environ = os.environ if environ is None else environ
     dsn = (environ.get('SENTRY_DSN') or '').strip()
     if not dsn:
@@ -64,5 +65,6 @@ def init_sentry(environ=None):
         max_request_body_size='never',
         include_local_variables=False,
         before_send=scrub_event,
+        **({'transport': transport} if transport is not None else {}),
     )
     return True

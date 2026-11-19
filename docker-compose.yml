@@ -1,0 +1,71 @@
+# Staging/production stack for Coolify ("Docker Compose" build pack): web + Celery worker + Celery beat + Redis.
+# The database is NOT here: it is Supabase (DATABASE_URL, session pooler, port 5432). See docs/STAGING_SETUP.md.
+#
+# Coolify: Project -> New resource -> Docker Compose (private repository, branch main), then give the `web` service its
+# domains. Set the variables below in Coolify's environment (they are encrypted there); nothing secret lives in this file.
+x-app: &app
+  build: .
+  restart: unless-stopped
+  environment: &env
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
+    DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+    DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL (Supabase session pooler, port 5432)}
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?set DJANGO_ALLOWED_HOSTS}
+    DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:?set DJANGO_CSRF_TRUSTED_ORIGINS}
+    RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY:-}
+    RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+    PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+    AUDIT_CLIENT_IP_HEADER: ${AUDIT_CLIENT_IP_HEADER:-HTTP_X_FORWARDED_FOR}
+    REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
+    FIELD_ENCRYPTION_KEYS: ${FIELD_ENCRYPTION_KEYS:?set FIELD_ENCRYPTION_KEYS (newest first, see docs/KEY_MANAGEMENT.md)}
+    WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+    WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+    WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+    WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+  depends_on:
+    redis:
+      condition: service_healthy
+
+services:
+  web:
+    <<: *app
+    expose:
+      - "8000"
+    volumes:
+      - media:/app/media   # uploaded files (consent scans, profile pictures), one folder per college
+
+  worker:
+    <<: *app
+    # Sends the WhatsApp digest messages and their retries.
+    command: ["celery", "-A", "college_management_system", "worker", "-l", "info", "--concurrency", "2"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A college_management_system inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 40s
+
+  beat:
+    <<: *app
+    # The scheduler: starts each college's digest once its send time has passed. Run EXACTLY ONE of these. The message
+    # rows are unique per guardian and day, so a second one could not double-send, but it would waste work.
+    command: ["celery", "-A", "college_management_system", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Not published to the host or the internet: only the containers of this stack can reach it, and only with the password.
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  media:
+  redis-data:

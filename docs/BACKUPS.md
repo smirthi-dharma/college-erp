@@ -8,14 +8,15 @@ destination (backup, encrypt, checksum, restore into a scratch database, wrong p
 ## 1. What is protected
 
 One `pg_dump` of the whole database every night covers every college's schema, the shared tables and the audit logs. The dump is
-encrypted on the server before it leaves, so Cloudflare only ever holds an unreadable file. Uploaded pictures and consent scans
-are files, not database rows: they are covered by the file-storage copy (see "Not covered yet").
+encrypted on the server before it leaves, so Cloudflare only ever holds an unreadable file. **Uploaded files** (profile pictures
+and consent-form scans, one folder per college under `MEDIA_ROOT`) are archived and encrypted the same way, in a second file with
+the same time stamp. The database is dumped first and the files second, so every file the dump refers to is in the archive.
 
 | | |
 |---|---|
 | Frequency | nightly at 02:00 India time (`30 20 * * *` UTC) |
 | Format | `pg_dump --format=custom --compress=9`, then `gpg --symmetric --cipher-algo AES256` |
-| Where | R2 bucket, `daily/erp-<UTC time>.dump.gpg` plus `.sha256`; on the 1st of the month also `monthly/` |
+| Where | R2 bucket, `daily/erp-<UTC time>.dump.gpg` (database) and `erp-<same time>.media.tar.gpg` (uploaded files), each with a `.sha256`; on the 1st of the month also `monthly/` |
 | Kept | `daily/` 35 days, `monthly/` 400 days (R2 lifecycle rules, below). The scripts never delete anything |
 | Loss window (RPO) | up to 24 hours. Supabase Pro's own daily backups are a second layer, not a replacement |
 | Time to recover (RTO) | not measured yet. The first restore drill fills this in `docs/RESTORE_LOG.md` |
@@ -39,6 +40,7 @@ are files, not database rows: they are covered by the file-storage copy (see "No
 ```bash
 # environment for the scheduled task (values come from Coolify secrets)
 DATABASE_URL=postgres://...            # Supabase session pooler (port 5432) or direct connection. NEVER port 6543
+MEDIA_ROOT=/app/media                  # the folder of uploaded files (the backup refuses to run if it is missing)
 BACKUP_PASSPHRASE_FILE=/run/secrets/backup_passphrase
 BACKUP_DEST=s3://erp-backups-prod
 R2_ENDPOINT=https://<account id>.r2.cloudflarestorage.com
@@ -58,22 +60,28 @@ anything, and refuses production and Supabase addresses.
 ```bash
 export RESTORE_ADMIN_URL=postgres://postgres@localhost:5432/postgres
 export RESTORE_DATABASE=restore_$(date +%Y%m)
+export RESTORE_MEDIA_DIR=/tmp/restore_media_$(date +%Y%m)   # a NEW folder; its name must start with restore_
 export BACKUP_PASSPHRASE_FILE=...  BACKUP_DEST=s3://erp-backups-prod  R2_ENDPOINT=...  AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...
 export PRODUCTION_DATABASE_URL=...       # optional: makes it refuse the production host
 deploy/backup/restore.sh latest          # or an exact file name; BACKUP_PREFIX=monthly for a monthly copy
 ```
 
-It downloads, checks the SHA-256, decrypts, restores, and prints per college the number of users and audit entries and the
-newest audit entry. Check:
+It downloads both files, checks both SHA-256 sums, decrypts, inspects the file archive (it refuses one with absolute or `..`
+paths, before creating anything), restores the database, unpacks the files into the new folder, and prints per college the number
+of users and audit entries and the newest audit entry. Then it **checks every profile picture and consent-form scan the database
+names against the restored files**: any that is missing is listed as `MISSING FILE` and the script ends with `RESTORE INCOMPLETE`
+(exit 3), which is an incident, not a pass. For a backup made before files were included, use `SKIP_MEDIA=1`. Check:
 
 - [ ] it ended with `RESTORE OK`
+- [ ] the picture/scan line per college says `0 missing`
+- [ ] the number of restored files is plausible (it is printed)
 - [ ] the colleges listed are the ones you expect
 - [ ] the newest audit entry is from the last day or so (that is your real loss window)
 - [ ] user counts match the live system within a day's changes
 - [ ] optional but best: point a local copy of the app at the restored database and log in as a college admin
 
 Then write one line in `docs/RESTORE_LOG.md` (date, file, how long, result), and drop the scratch database with the command the
-script prints. If any step fails, that is a production incident: fix it the same day and repeat the test.
+script prints (and remove the restored files folder). If any step fails, that is a production incident: fix it the same day and repeat the test.
 
 ## 4. Real disaster (the live database is lost)
 
@@ -92,20 +100,28 @@ on the public name, alerting you by e-mail or WhatsApp.
 
 ## 6. Error tracking (Sentry)
 
-Off unless `SENTRY_DSN` is set. When on, it is configured for a system full of student data: no request bodies, cookies,
-headers, user, query strings, breadcrumbs or local variables; e-mail addresses and phone numbers in error messages are masked;
-no performance tracing; the college's schema name is added as a tag so an error can be traced to one college. Tests cover the
-scrubber (`main_app/tests/test_observability.py`).
+Off unless `SENTRY_DSN` is set. The rule: send only what we control and nothing that can carry a person's data. An error report
+holds the exception type, the stack of code locations, the request method and path (no query string), the release, the
+environment and the college's schema name as a tag. It never holds request bodies, cookies, headers, user, local variables,
+breadcrumbs, extra data, or the **text** of exception and log messages (a database error or an f-string can contain a name, an
+e-mail address, a phone number or a roll number, and a name or a roll number cannot be recognised by pattern). The text is
+replaced by a fixed notice; to debug, use the type, the stack and the path, and reproduce with demo data. No performance tracing.
 
-Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (staging or production) and `GIT_COMMIT` in Coolify. **Decide the region before creating
-the project:** Sentry's data centres are in the US and the EU, not India. With the scrubbing above no personal data is sent, but
-the DPDP "India data residency" rule in `CLAUDE.md` is about personal data, so confirm you are comfortable, or self-host Sentry
-later. After the first deploy, raise a test error on staging and open it in Sentry to confirm there is no name, e-mail, phone or
-request body in it. Create an alert rule: e-mail on any new issue.
+**Proved by test:** `student360/tests/test_error_reporting.py` starts a real Sentry client with the project's settings and
+raises real errors through the real WSGI application with Sentry's WSGI layer (the same path as gunicorn): from a student's page,
+from a search for a name, from an admin form post that is logged with its data, from a log line and outside a request. Each
+carries names, phone numbers, e-mail addresses, a roll number, an address, a date of birth, a guardian's name and phone, an
+uploaded file name and a password. Every event that would be sent is searched for every one of those values; the test also
+fails if nothing was captured, so it cannot pass by doing nothing. It was mutation-checked (leaving the exception text, the
+request data or the cookies in each makes it fail).
+
+Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (staging or production) and `GIT_COMMIT` in Coolify. **Region: US or EU is accepted
+(decided 2026-11-19)**; with the above, no personal data leaves India. After the first deploy, raise a test error on staging and
+open it in Sentry to confirm it shows no name, e-mail, phone or request body. Create an alert rule: e-mail on any new issue.
 
 ## 7. Not covered yet (be honest with colleges about these)
 
-- Uploaded files (pictures, consent-form scans) live on the server's disk (`media/<college>/`) and are **not** in the database
-  dump. Until they move to Supabase Storage with its own copy, add a nightly copy of `media/` to the same R2 bucket (encrypted).
+- Uploaded files are backed up as an archive once a night, with the database, from `MEDIA_ROOT`. When they move to Supabase
+  Storage (planned), that storage needs its own copy into the same bucket; until then the server's disk is the only live copy.
 - No point-in-time recovery: you can go back to a night, not to a minute. Supabase Pro adds that on its side.
 - The monthly drill is a person's job; a calendar reminder is the control.
