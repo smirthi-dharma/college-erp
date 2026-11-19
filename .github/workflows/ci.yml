@@ -60,6 +60,8 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
+      - name: shellcheck (backup and deploy scripts)
+        run: shellcheck deploy/backup/*.sh
       - run: bandit -q -c pyproject.toml -r main_app colleges college_management_system --severity-level medium
 
   dependencies:

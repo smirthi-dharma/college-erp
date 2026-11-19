@@ -91,6 +91,7 @@ PUBLIC_SCHEMA_URLCONF = 'college_management_system.public_urls'
 DATABASE_ROUTERS = ('django_tenants.routers.TenantSyncRouter',)
 
 MIDDLEWARE = [
+    'main_app.health.HealthCheckMiddleware',  # first: /healthz needs no host, tenant, login or HTTPS
     'django_tenants.middleware.main.TenantMainMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'main_app.middleware.SecurityHeadersMiddleware',
@@ -312,3 +313,8 @@ CELERY_BEAT_SCHEDULE = {
     'dispatch-whatsapp-digests': {'task': 'messaging.tasks.dispatch_due_digests', 'schedule': 60.0},
     'purge-old-whatsapp-messages': {'task': 'messaging.tasks.purge_old_messages', 'schedule': crontab(hour=3, minute=30)},  # 03:30 IST
 }
+
+# Error tracking (off unless SENTRY_DSN is set; sends no personal data, see college_management_system/observability.py).
+from college_management_system.observability import init_sentry  # noqa: E402
+
+init_sentry()

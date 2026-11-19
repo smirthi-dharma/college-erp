@@ -1,0 +1,185 @@
+"""The backup and restore scripts: what they promise is checked here, without a database or the network.
+
+The real run (pg_dump, gpg, R2) is done by a person on staging (docs/BACKUPS.md); these tests keep the safety rules from
+being edited away: encrypt before upload, never overwrite or delete, refuse the wrong database, stop on the first error.
+"""
+import os
+import re
+import stat
+import subprocess
+from pathlib import Path
+
+from django.test import SimpleTestCase
+
+ROOT = Path(__file__).resolve().parents[2]
+BACKUP = ROOT / 'deploy' / 'backup' / 'backup.sh'
+RESTORE = ROOT / 'deploy' / 'backup' / 'restore.sh'
+MINIMAL_PATH = '/usr/bin:/bin'  # no pg_dump, psql, gpg or aws here: anything that needs them fails loudly
+
+
+def run(script, env=None, args=()):
+    base = {'PATH': MINIMAL_PATH, 'HOME': os.environ.get('HOME', '')}
+    base.update(env or {})
+    return subprocess.run(['bash', str(script), *args], env=base, capture_output=True, text=True, timeout=30)  # noqa: S603, S607
+
+
+def code_lines(script):
+    """The executable lines: no comments, and not the lines that only print a hint for the operator."""
+    return [line for line in script.read_text().splitlines() if line.strip() and not line.lstrip().startswith(('#', 'log '))]
+
+
+class FileRulesTests(SimpleTestCase):
+    def test_scripts_exist_are_executable_and_stop_on_the_first_error(self):
+        for script in (BACKUP, RESTORE):
+            self.assertTrue(script.exists(), script.name)
+            self.assertTrue(script.stat().st_mode & stat.S_IXUSR, f'{script.name} is not executable')
+            text = script.read_text()
+            self.assertTrue(text.startswith('#!/usr/bin/env bash'))
+            self.assertIn('set -euo pipefail', text)
+
+    def test_the_backup_is_encrypted_before_it_is_uploaded_and_the_readable_copy_is_removed(self):
+        text = BACKUP.read_text()
+        positions = {key: text.index(key) for key in ('pg_dump ', '--symmetric --cipher-algo AES256', 'rm -f "$work/db.dump"', 'aws s3 cp')}
+        self.assertEqual(list(positions.values()), sorted(positions.values()), 'order must be dump, encrypt, remove plaintext, upload')
+        self.assertIn('--format=custom', text)
+        self.assertIn('--passphrase-file', text)
+        self.assertNotIn('--passphrase ', text)  # a passphrase on the command line shows in `ps`
+
+    def test_the_upload_is_verified_and_a_failure_pings_the_dead_mans_switch(self):
+        text = BACKUP.read_text()
+        self.assertIn('head-object', text)
+        self.assertIn('ping /fail', text)
+        self.assertIn('sha256', text)
+
+    def test_nothing_is_ever_deleted_or_overwritten_in_the_backup_store(self):
+        for script in (BACKUP, RESTORE):
+            code = '\n'.join(code_lines(script))
+            self.assertNotRegex(code, r'aws s3 (rm|rb|mv|sync)\b', script.name)
+            self.assertNotRegex(code, r'\b(drop database|dropdb|truncate)\b', script.name)
+        self.assertNotIn('rm -rf "$dest', BACKUP.read_text())
+
+    def test_no_secret_is_written_into_the_scripts(self):
+        for script in (BACKUP, RESTORE):
+            text = '\n'.join(code_lines(script))  # the usage comments show example URLs on purpose
+            self.assertNotRegex(text, r'AKIA[0-9A-Z]{12,}', script.name)
+            self.assertNotRegex(text, r'postgres(?:ql)?://[^\s:@/$"]+:[^\s@$"]+@', script.name)  # user:password@ literal
+            self.assertNotRegex(text, r'(?i)(password|secret|token)=["\']?[A-Za-z0-9/+]{12,}', script.name)
+
+    def test_the_transaction_pooler_is_refused_for_dumps(self):
+        self.assertIn(':6543/', BACKUP.read_text())
+
+
+class BackupRunTests(SimpleTestCase):
+    def env(self, tmp, **extra):
+        passphrase = Path(tmp) / 'pass'
+        passphrase.write_text('not-a-real-passphrase')  # pragma: allowlist secret
+        base = {'DATABASE_URL': 'postgres://u@db.example:5432/erp', 'BACKUP_PASSPHRASE_FILE': str(passphrase),
+                'BACKUP_DEST': 's3://bucket/erp', 'R2_ENDPOINT': 'https://acct.r2.cloudflarestorage.com'}
+        base.update(extra)
+        return base
+
+    def test_dry_run_lists_the_steps_in_order_and_needs_no_tools(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run(BACKUP, self.env(tmp, DRY_RUN='1'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        steps = [line.split('DRY RUN: ')[1] for line in result.stdout.splitlines() if 'DRY RUN: ' in line]
+        self.assertTrue(steps[0].startswith('would pg_dump'))
+        self.assertTrue(steps[1].startswith('would encrypt'))
+        self.assertTrue(steps[2].startswith('would upload both files to s3://bucket/erp/daily/'))
+        self.assertTrue(steps[-1].startswith('would ping'))
+        self.assertRegex(result.stdout, r'erp-\d{8}T\d{6}Z\.dump\.gpg')
+
+    def test_it_refuses_to_start_without_its_settings(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            for missing in ('DATABASE_URL', 'BACKUP_PASSPHRASE_FILE', 'BACKUP_DEST'):
+                env = self.env(tmp)
+                del env[missing]
+                result = run(BACKUP, env)
+                self.assertNotEqual(result.returncode, 0, missing)
+                self.assertIn(missing, result.stderr, missing)
+
+    def test_it_refuses_the_transaction_pooler_an_empty_passphrase_and_a_bad_destination(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            pooler = run(BACKUP, self.env(tmp, DATABASE_URL='postgres://u@aws-0.pooler.supabase.com:6543/postgres'))
+            self.assertEqual(pooler.returncode, 2)
+            self.assertIn('transaction pooler', pooler.stderr)
+            (Path(tmp) / 'empty').write_text('')
+            empty = run(BACKUP, self.env(tmp, BACKUP_PASSPHRASE_FILE=str(Path(tmp) / 'empty')))
+            self.assertEqual(empty.returncode, 2)
+            self.assertIn('empty', empty.stderr)
+            bad = run(BACKUP, self.env(tmp, BACKUP_DEST='relative/dir'))
+            self.assertEqual(bad.returncode, 2)
+            no_endpoint = self.env(tmp)
+            del no_endpoint['R2_ENDPOINT']
+            self.assertNotEqual(run(BACKUP, no_endpoint).returncode, 0)
+
+    def test_without_the_database_tools_a_real_run_fails_and_leaves_nothing_behind(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / 'dest'
+            result = run(BACKUP, self.env(tmp, BACKUP_DEST=str(dest)))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(dest.exists(), 'a failed run must not leave a partial backup')
+
+
+class RestoreGuardTests(SimpleTestCase):
+    def env(self, tmp, **extra):
+        passphrase = Path(tmp) / 'pass'
+        passphrase.write_text('not-a-real-passphrase')  # pragma: allowlist secret
+        base = {'RESTORE_ADMIN_URL': 'postgres://u@localhost:5432/postgres', 'RESTORE_DATABASE': 'restore_drill_1',
+                'BACKUP_PASSPHRASE_FILE': str(passphrase), 'BACKUP_DEST': str(Path(tmp) / 'dest')}
+        base.update(extra)
+        return base
+
+    def refused(self, tmp, why, **extra):
+        result = run(RESTORE, self.env(tmp, **extra))
+        self.assertEqual(result.returncode, 2, f'{why}: {result.stdout} {result.stderr}')  # exit 2 = our guard, not 127 "psql missing"
+        return result.stderr
+
+    def test_the_scratch_database_name_must_start_with_restore_(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ('erp', 'college_erp_dev', 'postgres', 'restore_', 'restore_Bad', 'restore_a-b', 'restore_x;drop', 'prod_restore_1'):
+                self.assertIn('restore_', self.refused(tmp, name, RESTORE_DATABASE=name), name)
+
+    def test_it_will_not_restore_into_the_database_it_is_connected_to(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            error = self.refused(tmp, 'same db', RESTORE_ADMIN_URL='postgres://u@localhost:5432/restore_drill_1')
+            self.assertIn('RESTORE_ADMIN_URL connects to', error)
+
+    def test_it_will_not_run_on_the_production_host_or_on_supabase(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            error = self.refused(tmp, 'prod host', RESTORE_ADMIN_URL='postgres://u@db.prod.example:5432/postgres',
+                                 PRODUCTION_DATABASE_URL='postgres://app:pw@db.prod.example:5432/erp')  # pragma: allowlist secret
+            self.assertIn('production database host', error)
+            for url in ('postgres://u@db.abcd.supabase.co:5432/postgres', 'postgres://u@aws-0-ap.pooler.supabase.com:5432/postgres'):
+                self.assertIn('Supabase', self.refused(tmp, url, RESTORE_ADMIN_URL=url))
+
+    def test_a_bad_destination_or_passphrase_file_is_refused_before_anything_is_fetched(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self.refused(tmp, 'relative dest', BACKUP_DEST='relative/dir')
+            self.refused(tmp, 'no passphrase file', BACKUP_PASSPHRASE_FILE=str(Path(tmp) / 'missing'))
+
+    def test_a_missing_setting_is_reported_by_name(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            for missing in ('RESTORE_ADMIN_URL', 'RESTORE_DATABASE', 'BACKUP_PASSPHRASE_FILE', 'BACKUP_DEST'):
+                env = self.env(tmp)
+                del env[missing]
+                result = run(RESTORE, env)
+                self.assertNotEqual(result.returncode, 0, missing)
+                self.assertIn(missing, result.stderr, missing)
+
+    def test_the_guards_come_before_any_download_or_database_command(self):
+        lines = RESTORE.read_text().splitlines()
+        guards_end = next(i for i, line in enumerate(lines) if '# --- find and fetch' in line)
+        for command in ('aws s3', 'gpg ', 'psql "', 'pg_restore', 'cp "$src'):
+            first = next(i for i, line in enumerate(lines) if command in line and not line.lstrip().startswith('#'))
+            self.assertGreater(first, guards_end, f'{command} must come after the guards')
+        self.assertTrue(re.search(r'\^restore_\[a-z0-9_\]\+\$', RESTORE.read_text()))
