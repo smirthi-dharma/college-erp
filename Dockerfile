@@ -4,6 +4,11 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 
+# Tools the nightly backup needs (pg_dump, gpg, the S3 client for Cloudflare R2, curl for the heartbeat ping). Not used by the web process.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client gnupg curl awscli \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
