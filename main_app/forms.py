@@ -42,6 +42,7 @@ class CustomUserForm(FormSettings):
         if kwargs.get('instance'):
             instance = kwargs.get('instance').admin.__dict__
             self.fields['password'].required = False
+            self.fields['profile_pic'].required = False  # keep the current picture unless a new one is sent
             for field in CustomUserForm.Meta.fields:
                 self.fields[field].initial = instance.get(field)
             if self.instance.pk is not None:

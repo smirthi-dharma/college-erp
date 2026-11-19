@@ -3,6 +3,7 @@ import logging
 
 from django.contrib import messages
 from django.core.files.storage import default_storage
+from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
 from django.urls import reverse
@@ -356,7 +357,11 @@ def admin_view_profile(request):
 @require_POST
 def delete_staff(request, staff_id):
     staff = get_object_or_404(CustomUser, staff__id=staff_id)
-    staff.delete()
+    try:
+        staff.delete()
+    except ProtectedError:
+        messages.error(request, "This teacher still teaches subjects. Give those subjects to another teacher first.")
+        return redirect(reverse('manage_staff'))
     messages.success(request, "Staff deleted successfully!")
     return redirect(reverse('manage_staff'))
 
