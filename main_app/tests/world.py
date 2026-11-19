@@ -15,7 +15,6 @@ from django_tenants.utils import tenant_context
 
 from colleges.tests.base import HOST_A, TwoCollegeTestCase
 
-SECRET_NOTE = 'SECRET-NOTE-FOR-STUD2'  # pragma: allowlist secret
 STUD2_TEST, STUD2_EXAM = 777, 888
 
 
@@ -35,8 +34,6 @@ class WorldTestCase(TwoCollegeTestCase):
         from main_app.models import (
             Attendance,
             AttendanceReport,
-            FeedbackStudent,
-            NotificationStudent,
             StudentResult,
         )
         c = self.college_a
@@ -81,8 +78,6 @@ class WorldTestCase(TwoCollegeTestCase):
             StudentResult.objects.create(student=self.stud2.student, offering_id=self.sub1,
                                          test=STUD2_TEST, exam=STUD2_EXAM)
             StudentResult.objects.create(student=self.stud3.student, offering_id=self.sub2, test=33, exam=44)
-            NotificationStudent.objects.create(student=self.stud2.student, message=SECRET_NOTE)
-            FeedbackStudent.objects.create(student=self.stud2.student, feedback='fb', reply='')
             self.stud_ids = {u.email: u.student.pk for u in (self.stud1, self.stud2, self.stud3)}
             self.staff_ids = {u.email: u.staff.pk for u in (self.staff1, self.staff2)}
 

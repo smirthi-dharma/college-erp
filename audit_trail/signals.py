@@ -22,7 +22,7 @@ from .models import AuditLog
 logger = logging.getLogger(__name__)
 
 # Never stored, not even as a marker of the old value.
-REDACTED_FIELDS = {'password', 'fcm_token', 'ciphertext'}
+REDACTED_FIELDS = {'password', 'ciphertext'}
 # Personal data: we record that the field changed, not its value, so that the log never
 # blocks an erasure request (DPDP Act) and never leaks names/addresses to log readers.
 MASKED_FIELDS = {'first_name', 'last_name', 'email', 'address', 'gender', 'profile_pic',

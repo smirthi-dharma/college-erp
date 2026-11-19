@@ -2,122 +2,101 @@
 {% load static %}
 {% block page_title %}{{page_title}}{% endblock page_title %}
 {% block content %}
-<section class="content">
-    <div class="container-fluid">
-        <!-- Small boxes (Stat box) -->
-        <div class="row">
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h3>{{total_attendance}}</h3>
-
-                        <p>Total Attendance</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-calendar-alt"></i>
-                    </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
-                </div>
+{% if attendance_summary.status == 'shortage' %}<div class="alert alert-danger"><a href="{% url 'my_attendance' %}">Your attendance is below the required {{ attendance_summary.rule.required_percent|floatformat:"-2" }}%.</a></div>
+{% elif attendance_summary.status == 'warning' %}<div class="alert alert-warning"><a href="{% url 'my_attendance' %}">Your attendance is close to the required {{ attendance_summary.rule.required_percent|floatformat:"-2" }}%.</a></div>{% endif %}
+<div class="page-container">
+    
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon bg-blue">
+                <i class="fas fa-calendar-alt"></i>
             </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>{{ percent_present }}<sup style="font-size: 20px">%</sup></h3>
-
-                        <p>Percentage Present</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-calendar-check"></i>
-                    </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
-                </div>
+            <div class="stat-content">
+                <div class="stat-number">{{total_attendance}}</div>
+                <div class="stat-label">Total Attendance</div>
             </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h3>{{percent_absent}}<sup style="font-size: 20px">%</sup></h3>
-
-                        <p>Percentage Absent</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-calendar-minus"></i>
-                    </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
-                </div>
-            </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-primary">
-                    <div class="inner">
-                        <h3>{{total_subject}}</h3>
-
-                        <p>Total Subject</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-book"></i>
-                    </div>
-                    {# <a href="#" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a> #}
-                </div>
-            </div>
-            <!-- ./col -->
         </div>
-        <div class="row">
-            <div class="col-lg-6">
-           
-                        <!-- DONUT CHART -->
-                        <div class="card card-secondary">
-                          <div class="card-header">
-                            <h3 class="card-title">{{page_title}}</h3>
-            
-                            <div class="card-tools">
-                              <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                              </button>
-                              <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                            </div>
-                          </div>
-                          <div class="card-body">
-                            <canvas id="attendanceData" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                          </div>
-                          <!-- /.card-body -->
-                        </div>
-                        <!-- /.card -->
+        
+        <div class="stat-card">
+            <div class="stat-icon bg-green">
+                <i class="fas fa-calendar-check"></i>
             </div>
-                  
-            <div class="col-lg-6">
-            
-                        <div class="card card-secondary">
-                          <div class="card-header">
-                            <h3 class="card-title">{{page_title}}</h3>
-            
-                            <div class="card-tools">
-                              <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                              </button>
-                              <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                            </div>
-                          </div>
-                          <div class="card-body">
-                            <div class="chart">
-                              <canvas id="attendanceStatistics" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                          <!-- /.card-body -->
-                        <!-- /.card -->
-                        </div> 
-                        </div>
-                        </div>
-                        </div>
-                        </div>
-                        </div>  
-                        </section>
+            <div class="stat-content">
+                <div class="stat-number">{{percent_present}}<span class="stat-unit">%</span></div>
+                <div class="stat-label">Percentage Present</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon bg-red">
+                <i class="fas fa-calendar-minus"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{percent_absent}}<span class="stat-unit">%</span></div>
+                <div class="stat-label">Percentage Absent</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon bg-purple">
+                <i class="fas fa-book"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{total_subject}}</div>
+                <div class="stat-label">Total Subjects</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="row mt-4">
+        <div class="col-lg-6">
+            <div class="erpnext-card">
+                <div class="card-header">
+                    <h5 class="card-title">Attendance Overview</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendanceData" style="height: 300px; max-width: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="erpnext-card">
+                <div class="card-header">
+                    <h5 class="card-title">Subject-wise Attendance</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendanceStatistics" style="height: 300px; max-width: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 
 {% block custom_js %}
-  <script>
+<script>
 $(document).ready(function(){
+    // Initialize chart instances array
+    window.chartInstances = window.chartInstances || [];
+
+    // Set initial colors based on current theme
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const textColor = isDarkMode ? '#e0e0e0' : '#262626';
+
+    // ERPNext Theme Colors
+    var colors = {
+        primary: '#5e64ff',
+        success: '#28a745',
+        danger: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8',
+        light: '#f8f9fa',
+        dark: '#343a40',
+        purple: '#6f42c1'
+    };
 
     //Dataset
     var subjects = {{data_name|safe}}
@@ -127,75 +106,115 @@ $(document).ready(function(){
     //-------------
     //- DONUT CHART -
     var attendanceDataCanvas = $('#attendanceData').get(0).getContext('2d')
-    var donutData        = {
+    var donutData = {
       labels: [
          'Present', 'Absent'
       ],
       datasets: [
         {
           data: [{{percent_present}}, {{percent_absent}}],
-          backgroundColor : ['#00a65a','#f56954'],
+          backgroundColor : [colors.success, colors.danger],
+          borderColor: [colors.success, colors.danger],
+          borderWidth: 2
         }
       ]
     }
-    var donutOptions     = {
+    var donutOptions = {
       maintainAspectRatio : false,
       responsive : true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {
+              usePointStyle: true,
+              padding: 20,
+              color: textColor,
+              font: {
+                size: 12
+              }
+            }
+          }
+        }
     }
     var attendanceData = new Chart(attendanceDataCanvas, {
       type: 'doughnut',
       data: donutData,
       options: donutOptions      
     });
+    window.chartInstances.push(attendanceData);
 
     //attendanceStatistics
-//Bar Chart
-var areaChartData = {
-    labels  : subjects,
-    datasets: [
-    {
-        label               : 'Present In Class',
-        backgroundColor     : 'rgba(60,141,188,0.9)',
-        borderColor         : 'rgba(60,141,188,0.8)',
-        pointRadius          : false,
-        pointColor          : '#3b8bba',
-        pointStrokeColor    : 'rgba(60,141,188,1)',
-        pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(60,141,188,1)',
-        data                : data_present
+    //Bar Chart
+    var areaChartData = {
+        labels  : subjects,
+        datasets: [
+        {
+            label               : 'Present In Class',
+            backgroundColor     : colors.success,
+            borderColor         : colors.success,
+            pointRadius          : false,
+            pointColor          : colors.success,
+            pointStrokeColor    : colors.success,
+            pointHighlightFill  : '#fff',
+            pointHighlightStroke: colors.success,
+            data                : data_present
+          },
+
+          {
+            label               : 'Absent In Class',
+            backgroundColor     : colors.danger,
+            borderColor         : colors.danger,
+            pointRadius         : false,
+            pointColor          : colors.danger,
+            pointStrokeColor    : colors.danger,
+            pointHighlightFill  : '#fff',
+            pointHighlightStroke: colors.danger,
+            data                : data_absent
+          },
+        ]
+    }
+    var barChartCanvas = $('#attendanceStatistics').get(0).getContext('2d')
+    var barChartData = jQuery.extend(true, {}, areaChartData)
+    var temp = areaChartData.datasets[0]
+    barChartData.datasets[0] = temp
+    var barChartOptions = {
+      responsive              : true,
+      maintainAspectRatio     : false,
+      datasetFill             : false,
+      plugins: {
+        legend: {
+          labels: {
+            color: textColor
+          }
+        }
       },
+      scales: {
+        y: {
+          ticks: {
+            color: textColor
+          },
+          grid: {
+            color: isDarkMode ? '#404040' : '#f1f3f4'
+          }
+        },
+        x: {
+          ticks: {
+            color: textColor
+          },
+          grid: {
+            color: isDarkMode ? '#404040' : '#f1f3f4'
+          }
+        }
+      }
+    }
 
-      {
-        label               : 'Absent In Class',
-        backgroundColor     : 'rgba(210, 214, 222, 1)',
-        borderColor         : 'rgba(210, 214, 222, 1)',
-        pointRadius         : false,
-        pointColor          : 'rgba(210, 214, 222, 1)',
-        pointStrokeColor    : '#c1c7d1',
-        pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(220,220,220,1)',
-        data                : data_absent
-      },
-    ]
-  }
-var barChartCanvas = $('#attendanceStatistics').get(0).getContext('2d')
-var barChartData = jQuery.extend(true, {}, areaChartData)
-var temp = areaChartData.datasets[0]
-barChartData.datasets[0] = temp
-var barChartOptions = {
-  responsive              : true,
-  maintainAspectRatio     : false,
-  datasetFill             : false
-}
-
-var barChart = new Chart(barChartCanvas, {
-  type: 'bar', 
-  data: barChartData,
-  options: barChartOptions
+    var barChart = new Chart(barChartCanvas, {
+      type: 'bar', 
+      data: barChartData,
+      options: barChartOptions
+    })
+    window.chartInstances.push(barChart);
 })
-
- 
-})
-
-  </script>
+</script>
 {% endblock custom_js %}

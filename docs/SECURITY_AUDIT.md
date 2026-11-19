@@ -55,9 +55,7 @@ no entry; a failure to log stops the change). Design choices:
 3. ~~Library module~~ **Removed**: URLs, menus, views, forms, templates and (migration 0004) the Book, IssuedBook and Library tables.
 4. **Uploaded-file serving** is untested: files are stored per college, but how a college's photos are served
    (and kept private) is not built. The development `static()` route serves `MEDIA_ROOT` without authentication.
-5. **Firebase web config** now comes from `FIREBASE_WEB_CONFIG` (your own project); the upstream project's config was removed
-   from the service worker and three templates, and the service worker returns 404 until configured.
-   The legacy FCM endpoint used by `notifications.py` has been retired by Google; move to the HTTP v1 API.
+5. ~~**Firebase web config** and the legacy FCM push~~ **Removed** (2026-11-12): push notifications, in-app notifications, leave and feedback are gone from the code and the database (migration 0015). WhatsApp covers parent alerts for the pilot.
 6. **Password-reset flow** (`/accounts/password_reset/`) was not tested for per-college isolation, and the
    email settings still point at SMTP via environment variables that are not set.
 7. **No Content-Security-Policy header**; the templates use inline scripts. Plan a CSP when the React front end replaces them.

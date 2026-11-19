@@ -17,7 +17,7 @@ Last updated 2026-11-09. Base: fork of Ansarimajid/College-ERP (MIT). Stack now:
 
 Roles: 3 of 9 exist (HoD, Staff, Student). Missing Super admin, Principal/Management, IQAC coordinator, Office staff, Parent, Placement officer. Role checks are one middleware keyed on module name, not per-endpoint.
 
-Out of pilot scope but present in the base (remove or hide): leave, feedback, `erpnext_*` templates. The library pages are removed (URLs, menus, views); the `Book`, `IssuedBook`, `Library` models remain until a migration drops them.
+Leave, feedback, in-app notifications, Firebase push and the dead `erpnext_*` templates were removed on 2026-11-12 (`chore/remove-legacy-features`). The library pages are removed (URLs, menus, views); the `Book`, `IssuedBook`, `Library` models remain until a migration drops them.
 
 ## Non-negotiables
 
