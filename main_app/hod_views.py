@@ -19,35 +19,41 @@ logger = logging.getLogger(__name__)
 
 @role_required(COLLEGE_ADMIN)
 def admin_home(request):
+    """The inherited home page. A fixed number of queries (about ten) however many students the college has."""
+    from django.db.models import Count, Q
+
     from academics.models import Enrolment, Programme, Subject, SubjectOffering
-    total_staff = Staff.objects.all().count()
-    total_students = Student.objects.all().count()
+    total_staff = Staff.objects.count()
+    total_students = Student.objects.count()
     total_subject = Subject.objects.count()
     total_course = Programme.objects.count()
 
     offering_list, attendance_list, student_count_list_in_subject = [], [], []
-    for offering in SubjectOffering.objects.select_related('subject', 'section__batch')[:30]:
+    offerings = (SubjectOffering.objects.select_related('subject').order_by('pk')
+                 .annotate(classes=Count('attendance', distinct=True),
+                           enrolled=Count('enrolment', filter=Q(enrolment__status=Enrolment.ACTIVE), distinct=True)))[:30]
+    for offering in offerings:
         offering_list.append(offering.subject.code[:7])
-        attendance_list.append(Attendance.objects.filter(offering=offering).count())
-        student_count_list_in_subject.append(
-            Enrolment.objects.filter(offering=offering, status=Enrolment.ACTIVE).count())
+        attendance_list.append(offering.classes)
+        student_count_list_in_subject.append(offering.enrolled)
 
+    students_per_programme = dict(Student.objects.filter(section__isnull=False).order_by()
+                                  .values_list('section__batch__programme').annotate(n=Count('pk')))
     programme_name_list, subject_count_list, student_count_list_in_course = [], [], []
-    for programme in Programme.objects.all():
+    for programme in Programme.objects.order_by('pk').annotate(subjects=Count('subject', distinct=True)):
         programme_name_list.append(programme.name)
-        subject_count_list.append(Subject.objects.filter(programme=programme).count())
-        student_count_list_in_course.append(Student.objects.filter(section__batch__programme=programme).count())
+        subject_count_list.append(programme.subjects)
+        student_count_list_in_course.append(students_per_programme.get(programme.pk, 0))
 
-    # For Students
-    student_attendance_present_list = []
-    student_attendance_leave_list = []
-    student_name_list = []
-    for student in Student.objects.select_related('admin'):
-        attendance = AttendanceReport.objects.filter(student_id=student.id, status__in=['present', 'on_duty']).count()
-        absent = AttendanceReport.objects.filter(student_id=student.id, status='absent').count()
-        student_attendance_present_list.append(attendance)
-        student_attendance_leave_list.append(absent)
-        student_name_list.append(student.admin.first_name)
+    # For Students: one query for the names and one for all the attendance counts
+    totals = {row['student_id']: row for row in AttendanceReport.objects.order_by().values('student_id').annotate(
+        present=Count('pk', filter=Q(status__in=['present', 'on_duty'])), absent=Count('pk', filter=Q(status='absent')))}
+    student_attendance_present_list, student_attendance_leave_list, student_name_list = [], [], []
+    for pk, first_name in Student.objects.order_by('pk').values_list('pk', 'admin__first_name'):
+        row = totals.get(pk, {})
+        student_attendance_present_list.append(row.get('present', 0))
+        student_attendance_leave_list.append(row.get('absent', 0))
+        student_name_list.append(first_name)
 
     context = {
         'page_title': "Administrative Dashboard",

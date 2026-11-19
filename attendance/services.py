@@ -9,6 +9,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 
 from academics.models import Enrolment
+from audit_trail.bulk import bulk_create_audited
 from main_app.models import Attendance, AttendanceReport, CustomUser, Staff, Student
 
 from .models import AttendanceRule, Condonation, SubstituteAssignment, default_rule, rule_for
@@ -84,7 +85,7 @@ def submit(user, offering, day, period, statuses, key='', today=None):
     check_date(offering, day, user, today)
     if not 1 <= period <= 8:
         raise ValidationError('Period must be between 1 and 8.')
-    listed = {s.pk for s in roster(offering, day)}
+    listed = set(roster(offering, day).order_by().values_list('pk', flat=True))
     unknown = {int(k) for k in statuses} - listed
     if unknown:
         raise PermissionDenied('A student who is not on this class list was submitted.')
@@ -96,16 +97,18 @@ def submit(user, offering, day, period, statuses, key='', today=None):
         attendance, created = _get_or_create_class(offering, day, period, user, key)
         existing = {r.student_id: r for r in AttendanceReport.objects.filter(attendance=attendance)}
         changed = 0
+        new_reports = []
         for student_id, status in wanted.items():
             report = existing.get(student_id)
             review = status == ON_DUTY and not is_admin
             if report is None:
-                AttendanceReport(student_id=student_id, attendance=attendance, status=status, needs_review=review).save()
-                changed += 1
+                new_reports.append(AttendanceReport(student_id=student_id, attendance=attendance, status=status, needs_review=review))
             elif report.status != status:
                 report.status, report.needs_review = status, review
-                report.save()
+                report.save()  # a correction of an earlier class: few rows, each one audited by save()
                 changed += 1
+        bulk_create_audited(AttendanceReport, new_reports)  # the first save of a class: one insert and one audit insert
+        changed += len(new_reports)
         if not created and changed and attendance.taken_by_id != user.pk:
             attendance.taken_by = user
             attendance.save()
