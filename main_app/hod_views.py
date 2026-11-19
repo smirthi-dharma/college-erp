@@ -11,7 +11,6 @@ from django.views.decorators.http import require_POST
 from .access import COLLEGE_ADMIN, role_required
 from .forms import *
 from .models import *
-from .notifications import send_push
 from .utils import js_json
 
 logger = logging.getLogger(__name__)
@@ -45,9 +44,8 @@ def admin_home(request):
     for student in Student.objects.select_related('admin'):
         attendance = AttendanceReport.objects.filter(student_id=student.id, status__in=['present', 'on_duty']).count()
         absent = AttendanceReport.objects.filter(student_id=student.id, status='absent').count()
-        leave = LeaveReportStudent.objects.filter(student_id=student.id, status=1).count()
         student_attendance_present_list.append(attendance)
-        student_attendance_leave_list.append(leave + absent)
+        student_attendance_leave_list.append(absent)
         student_name_list.append(student.admin.first_name)
 
     context = {
@@ -279,96 +277,12 @@ def check_email_availability(request):
         return HttpResponse(False)
 
 
-@role_required(COLLEGE_ADMIN)
-def student_feedback_message(request):
-    if request.method != 'POST':
-        feedbacks = FeedbackStudent.objects.all()
-        context = {
-            'feedbacks': feedbacks,
-            'page_title': 'Student Feedback Messages'
-        }
-        return render(request, 'hod_template/student_feedback_template.html', context)
-    else:
-        feedback_id = request.POST.get('id')
-        try:
-            feedback = get_object_or_404(FeedbackStudent, id=feedback_id)
-            reply = request.POST.get('reply')
-            feedback.reply = reply
-            feedback.save()
-            return HttpResponse(True)
-        except Exception:
-            return HttpResponse(False)
 
 
-@role_required(COLLEGE_ADMIN)
-def staff_feedback_message(request):
-    if request.method != 'POST':
-        feedbacks = FeedbackStaff.objects.all()
-        context = {
-            'feedbacks': feedbacks,
-            'page_title': 'Staff Feedback Messages'
-        }
-        return render(request, 'hod_template/staff_feedback_template.html', context)
-    else:
-        feedback_id = request.POST.get('id')
-        try:
-            feedback = get_object_or_404(FeedbackStaff, id=feedback_id)
-            reply = request.POST.get('reply')
-            feedback.reply = reply
-            feedback.save()
-            return HttpResponse(True)
-        except Exception:
-            return HttpResponse(False)
 
 
-@role_required(COLLEGE_ADMIN)
-def view_staff_leave(request):
-    if request.method != 'POST':
-        allLeave = LeaveReportStaff.objects.all()
-        context = {
-            'allLeave': allLeave,
-            'page_title': 'Leave Applications From Staff'
-        }
-        return render(request, "hod_template/staff_leave_view.html", context)
-    else:
-        id = request.POST.get('id')
-        status = request.POST.get('status')
-        if (status == '1'):
-            status = 1
-        else:
-            status = -1
-        try:
-            leave = get_object_or_404(LeaveReportStaff, id=id)
-            leave.status = status
-            leave.save()
-            return HttpResponse(True)
-        except Exception:
-            return HttpResponse(False)
 
 
-@role_required(COLLEGE_ADMIN)
-def view_student_leave(request):
-    if request.method != 'POST':
-        allLeave = LeaveReportStudent.objects.all()
-        context = {
-            'allLeave': allLeave,
-            'page_title': 'Leave Applications From Students'
-        }
-        return render(request, "hod_template/student_leave_view.html", context)
-    else:
-        id = request.POST.get('id')
-        status = request.POST.get('status')
-        if (status == '1'):
-            status = 1
-        else:
-            status = -1
-        try:
-            leave = get_object_or_404(LeaveReportStudent, id=id)
-            leave.status = status
-            leave.save()
-            return HttpResponse(True)
-        except Exception:
-            return HttpResponse(False)
 
 
 @role_required(COLLEGE_ADMIN)
@@ -430,48 +344,12 @@ def admin_view_profile(request):
     return render(request, "hod_template/admin_view_profile.html", context)
 
 
-@role_required(COLLEGE_ADMIN)
-def admin_notify_staff(request):
-    staff = CustomUser.objects.filter(user_type=2)
-    context = {
-        'page_title': "Send Notifications To Staff",
-        'allStaff': staff
-    }
-    return render(request, "hod_template/staff_notification.html", context)
 
 
-@role_required(COLLEGE_ADMIN)
-def admin_notify_student(request):
-    student = CustomUser.objects.filter(user_type=3)
-    context = {
-        'page_title': "Send Notifications To Students",
-        'students': student
-    }
-    return render(request, "hod_template/student_notification.html", context)
 
 
-@role_required(COLLEGE_ADMIN)
-@require_POST
-def send_student_notification(request):
-    student = get_object_or_404(Student, admin_id=request.POST.get('id'))
-    message = (request.POST.get('message') or '').strip()
-    if not message:
-        return HttpResponse("False")
-    send_push(student.admin.fcm_token, message, 'student_view_notification')
-    NotificationStudent.objects.create(student=student, message=message)
-    return HttpResponse("True")
 
 
-@role_required(COLLEGE_ADMIN)
-@require_POST
-def send_staff_notification(request):
-    staff = get_object_or_404(Staff, admin_id=request.POST.get('id'))
-    message = (request.POST.get('message') or '').strip()
-    if not message:
-        return HttpResponse("False")
-    send_push(staff.admin.fcm_token, message, 'staff_view_notification')
-    NotificationStaff.objects.create(staff=staff, message=message)
-    return HttpResponse("True")
 
 
 @role_required(COLLEGE_ADMIN)

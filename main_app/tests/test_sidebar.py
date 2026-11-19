@@ -20,8 +20,7 @@ class SidebarTests(WorldTestCase):
         body = self.sidebar(self.staff1, 'staff_home')
         self.assertEqual(body.count('>Student 360<'), 1)
         self.assertEqual(body.count('>Take Attendance<'), 1)
-        for admin_only in (reverse('admin_notify_staff'), reverse('admin_notify_student'), reverse('view_staff_leave'),
-                           reverse('student_feedback_message'), reverse('shortage_report')):
+        for admin_only in (reverse('shortage_report'), reverse('add_staff')):
             self.assertNotIn(f'href="{admin_only}"', body)
 
     def test_every_link_in_each_menu_is_allowed_for_that_role(self):

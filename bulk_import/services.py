@@ -9,13 +9,7 @@ from academics.models import Department, Enrolment, Section
 from main_app.models import (
     AttendanceReport,
     CustomUser,
-    FeedbackStaff,
-    FeedbackStudent,
     Guardian,
-    LeaveReportStaff,
-    LeaveReportStudent,
-    NotificationStaff,
-    NotificationStudent,
     StudentGuardian,
     StudentResult,
 )
@@ -58,18 +52,10 @@ def _users_blockers(users, student_side):
             reasons.append('students were enrolled by hand after the import')
         if StudentGuardian.objects.filter(student__admin_id__in=ids).exists():
             reasons.append('parents are linked to these students (roll back the parents import first)')
-        if (LeaveReportStudent.objects.filter(student__admin_id__in=ids).exists()
-                or FeedbackStudent.objects.filter(student__admin_id__in=ids).exists()
-                or NotificationStudent.objects.filter(student__admin_id__in=ids).exists()):
-            reasons.append('these students have leave requests, feedback or notifications')
     else:
         from academics.models import SubjectOffering
         if SubjectOffering.objects.filter(faculty__admin_id__in=ids).exists():
             reasons.append('these staff teach subject offerings')
-        if (LeaveReportStaff.objects.filter(staff__admin_id__in=ids).exists()
-                or FeedbackStaff.objects.filter(staff__admin_id__in=ids).exists()
-                or NotificationStaff.objects.filter(staff__admin_id__in=ids).exists()):
-            reasons.append('these staff have leave requests, feedback or notifications')
     for blocker in ROLLBACK_BLOCKERS:
         reasons.extend(blocker(ids))
     return reasons

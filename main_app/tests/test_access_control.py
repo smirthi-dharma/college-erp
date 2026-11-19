@@ -14,13 +14,13 @@ from django_tenants.utils import tenant_context
 
 from colleges.tests.base import PASSWORD
 
-from .world import SECRET_NOTE, STUD2_EXAM, STUD2_TEST, WorldTestCase
+from .world import STUD2_EXAM, STUD2_TEST, WorldTestCase
 
 # Views that belong to Django itself and carry their own checks (same list as LoginCheckMiddleWare).
 FRAMEWORK_MODULES = ('django.contrib.admin', 'django.contrib.auth.views', 'django.views.static')
 
 # The ONLY pages reachable without logging in. Adding a public page means adding it here on purpose.
-EXPECTED_PUBLIC_VIEWS = {'login_page', 'user_login', 'showFirebaseJS', 'accounts/login/',
+EXPECTED_PUBLIC_VIEWS = {'login_page', 'user_login', 'accounts/login/',
                          'whatsapp_webhook'}  # Meta's callback: no login, protected by its signature check
 
 
@@ -106,11 +106,6 @@ class RoleSeparationTests(WorldTestCase):
             ('post', '/structure/offerings/%d/delete/' % self.sub2, {}),
             ('post', '/structure/departments/%d/edit/' % self.dept1, {'name': 'renamed', 'code': 'CSE'}),
             ('post', '/structure/offerings/%d/enrol/' % self.sub1, {'student': self.stud_ids['stud3@a.in']}),
-            ('post', '/student/view/leave/', {'id': 1, 'status': 1}),
-            ('post', '/staff/view/leave/', {'id': 1, 'status': 1}),
-            ('post', '/student/view/feedback/', {'id': 1, 'reply': 'x'}),
-            ('post', '/send_student_notification/', {'id': self.stud1.pk, 'message': 'x'}),
-            ('post', '/send_staff_notification/', {'id': self.staff2.pk, 'message': 'x'}),
             ('get', '/student/manage/', None), ('get', '/staff/manage/', None), ('get', '/admin/home/', None),
             ('get', '/attendance/view/', None),
         ]
@@ -125,7 +120,6 @@ class RoleSeparationTests(WorldTestCase):
         attempts = [
             ('post', '/structure/departments/add/', {'name': 'Hacked', 'code': 'HX'}),
             ('post', '/student/delete/%d' % self.stud_ids['stud2@a.in'], {}),
-            ('post', '/student/view/leave/', {'id': 1, 'status': 1}),
             ('post', '/staff/result/add/', {'student_list': self.stud_ids['stud1@a.in'], 'offering': self.sub1,
                                             'test': 100, 'exam': 100}),
             ('post', '/attendance/class/%d/' % self.sub1, {'date': TODAY, 'period': 1, 'key': 'k'}),
@@ -168,12 +162,6 @@ class StudentDataIsolationTests(WorldTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, str(STUD2_TEST))
         self.assertNotContains(resp, str(STUD2_EXAM))
-
-    def test_notifications_page_shows_only_own_notifications(self):
-        resp = self.as_user(self.stud1).get('/student/view/notification/')
-        self.assertEqual(resp.status_code, 200)
-        self.assertNotContains(resp, SECRET_NOTE)
-        self.assertContains(self.as_user(self.stud2).get('/student/view/notification/'), SECRET_NOTE)
 
     def test_attendance_query_returns_only_own_records(self):
         resp = self.as_user(self.stud1).post('/student/view/attendance/', {
