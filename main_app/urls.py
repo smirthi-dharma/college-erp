@@ -18,10 +18,13 @@ from django.urls import path
 from main_app.access import STAFF, role_required
 from main_app.EditResultView import EditResultView
 
-from . import hod_views, photos, staff_views, student_views, views
+from . import hod_views, photos, pwa, staff_views, student_views, views
 
 urlpatterns = [
     path("", views.login_page, name='login_page'),
+    path("manifest.webmanifest", pwa.manifest, name='pwa_manifest'),
+    path("sw.js", pwa.service_worker, name='pwa_service_worker'),
+    path("offline/", pwa.offline, name='pwa_offline'),
     path("photo/<int:user_id>/", photos.profile_photo, name='profile_photo'),
     path("get_attendance", views.get_attendance, name='get_attendance'),
     path("doLogin/", views.doLogin, name='user_login'),

@@ -21,7 +21,8 @@ FRAMEWORK_MODULES = ('django.contrib.admin', 'django.contrib.auth.views', 'djang
 
 # The ONLY pages reachable without logging in. Adding a public page means adding it here on purpose.
 EXPECTED_PUBLIC_VIEWS = {'login_page', 'user_login', 'accounts/login/',
-                         'whatsapp_webhook'}  # Meta's callback: no login, protected by its signature check
+                         'whatsapp_webhook',  # Meta's callback: no login, protected by its signature check
+                         'pwa_manifest', 'pwa_service_worker', 'pwa_offline'}  # a browser fetches these without a session
 
 
 ADMIN_PREFIX = '/platform-admin/'  # the 2FA, platform-staff-only Django admin (tested in test_admin_2fa.py)

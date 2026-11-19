@@ -1,0 +1,9 @@
+{% load static %}
+<!-- Installable web app: manifest, colour of the phone's address bar, home-screen icon, service worker -->
+<link rel="manifest" href="{% url 'pwa_manifest' %}">
+<meta name="theme-color" content="#5e64ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+<script src="{% static 'pwa/register.js' %}" defer></script>

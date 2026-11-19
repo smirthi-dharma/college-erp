@@ -236,6 +236,9 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
 
+# The service worker's cache names carry this, so a new deploy replaces the old caches (set GIT_COMMIT in the deploy).
+PWA_CACHE_VERSION = (os.environ.get('GIT_COMMIT') or 'dev')[:12]
+
 # Content-Security-Policy (see main_app.middleware.SecurityHeadersMiddleware). Everything comes from our own origin,
 # plus the few third-party hosts the pages use: jsDelivr (Bootstrap, Chart.js, icons), Google Fonts, reCAPTCHA.
 # 'unsafe-inline' stays for scripts and styles until the inline <script> blocks and onclick/onerror attributes move into
