@@ -1,0 +1,111 @@
+# Backups, restore test, error tracking and the health check
+
+Status (2026-11-19): **prepared, not live.** The scripts, tests and this guide are in the repository; nothing runs until staging
+exists (`docs/STAGING_SETUP.md`). The scripts were exercised end to end against a local Postgres with a local folder as the
+destination (backup, encrypt, checksum, restore into a scratch database, wrong passphrase, tampered file, name guards). They have
+**not** been run against Cloudflare R2 or Supabase.
+
+## 1. What is protected
+
+One `pg_dump` of the whole database every night covers every college's schema, the shared tables and the audit logs. The dump is
+encrypted on the server before it leaves, so Cloudflare only ever holds an unreadable file. Uploaded pictures and consent scans
+are files, not database rows: they are covered by the file-storage copy (see "Not covered yet").
+
+| | |
+|---|---|
+| Frequency | nightly at 02:00 India time (`30 20 * * *` UTC) |
+| Format | `pg_dump --format=custom --compress=9`, then `gpg --symmetric --cipher-algo AES256` |
+| Where | R2 bucket, `daily/erp-<UTC time>.dump.gpg` plus `.sha256`; on the 1st of the month also `monthly/` |
+| Kept | `daily/` 35 days, `monthly/` 400 days (R2 lifecycle rules, below). The scripts never delete anything |
+| Loss window (RPO) | up to 24 hours. Supabase Pro's own daily backups are a second layer, not a replacement |
+| Time to recover (RTO) | not measured yet. The first restore drill fills this in `docs/RESTORE_LOG.md` |
+
+## 2. One-time setup (you do this; about 30 minutes)
+
+1. **R2 bucket.** Cloudflare dashboard, R2, create a bucket named like `erp-backups-prod`. Region: Asia-Pacific hint.
+2. **Lifecycle rules** on the bucket: delete objects under `daily/` after 35 days; under `monthly/` after 400 days.
+3. **API token.** R2, Manage API tokens, create a token with *Object Read & Write* limited to this one bucket. Keep the access key
+   id and secret in Coolify's secret store, never in the repository or in chat.
+4. **Encryption passphrase.** Generate one: `openssl rand -base64 36`. Put it in a file on the server (mode 600) and in your
+   password manager, and keep a **second copy somewhere that is not the server and not Cloudflare** (printed in a safe, or a
+   second password manager). **If the passphrase is lost, every backup is unreadable. If it leaks, whoever also gets the bucket can
+   read the data.** Rotating it is a new passphrase for new backups; old files still need the old one, so keep old ones too.
+5. **Dead-man's switch** (recommended): create a free check at healthchecks.io (or similar) expecting a ping every 24 h; put its
+   URL in `BACKUP_PING_URL`. A silent failure then becomes an e-mail the next morning. The script calls `<url>/fail` on errors.
+6. **Tools on the machine that runs the job:** `postgresql-client-17`, `gnupg`, `awscli`, `curl`. The current Dockerfile (PR #13)
+   does not install them yet; add them there or run the job from a small separate container. Do this when you set up staging.
+7. **Schedule** it as a Coolify scheduled task with the environment below.
+
+```bash
+# environment for the scheduled task (values come from Coolify secrets)
+DATABASE_URL=postgres://...            # Supabase session pooler (port 5432) or direct connection. NEVER port 6543
+BACKUP_PASSPHRASE_FILE=/run/secrets/backup_passphrase
+BACKUP_DEST=s3://erp-backups-prod
+R2_ENDPOINT=https://<account id>.r2.cloudflarestorage.com
+AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...
+BACKUP_PING_URL=https://hc-ping.com/<your check id>
+```
+
+Command: `deploy/backup/backup.sh`. First run it by hand with `DRY_RUN=1` to see the plan, then once for real, then confirm the file
+is in the bucket and run the restore test below straight away: **a backup that has never been restored is not a backup.**
+
+## 3. The monthly restore test (30 minutes, first working day of the month)
+
+Restore into a **scratch** Postgres that is not production and not Supabase (your own machine's Postgres, or a throw-away
+`postgres:17` container). The script creates a new database whose name must start with `restore_`, never overwrites or drops
+anything, and refuses production and Supabase addresses.
+
+```bash
+export RESTORE_ADMIN_URL=postgres://postgres@localhost:5432/postgres
+export RESTORE_DATABASE=restore_$(date +%Y%m)
+export BACKUP_PASSPHRASE_FILE=...  BACKUP_DEST=s3://erp-backups-prod  R2_ENDPOINT=...  AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...
+export PRODUCTION_DATABASE_URL=...       # optional: makes it refuse the production host
+deploy/backup/restore.sh latest          # or an exact file name; BACKUP_PREFIX=monthly for a monthly copy
+```
+
+It downloads, checks the SHA-256, decrypts, restores, and prints per college the number of users and audit entries and the
+newest audit entry. Check:
+
+- [ ] it ended with `RESTORE OK`
+- [ ] the colleges listed are the ones you expect
+- [ ] the newest audit entry is from the last day or so (that is your real loss window)
+- [ ] user counts match the live system within a day's changes
+- [ ] optional but best: point a local copy of the app at the restored database and log in as a college admin
+
+Then write one line in `docs/RESTORE_LOG.md` (date, file, how long, result), and drop the scratch database with the command the
+script prints. If any step fails, that is a production incident: fix it the same day and repeat the test.
+
+## 4. Real disaster (the live database is lost)
+
+1. Do not panic and do not delete anything. Find the newest file in `daily/` and run the restore into a **new** database on the
+   new server. Note the time it took.
+2. Point `DATABASE_URL` of the app at it, run `python manage.py migrate_schemas` (safe: it only adds what is missing), check
+   `/healthz`, log in as a college admin.
+3. Tell the colleges how much was lost (the newest audit entry time) and write it down.
+
+## 5. Health check: `GET /healthz`
+
+Answers `200 {"status":"ok"}` or `503 {"status":"unavailable","checks":{"database":"failed"}}`. It works over plain HTTP on any
+host name or IP (so Coolify and the container can call it as `http://localhost:8000/healthz`), needs no login, and shows nothing
+about colleges, users or versions. Use it as the Coolify health check path and in an uptime monitor (UptimeRobot, Better Stack)
+on the public name, alerting you by e-mail or WhatsApp.
+
+## 6. Error tracking (Sentry)
+
+Off unless `SENTRY_DSN` is set. When on, it is configured for a system full of student data: no request bodies, cookies,
+headers, user, query strings, breadcrumbs or local variables; e-mail addresses and phone numbers in error messages are masked;
+no performance tracing; the college's schema name is added as a tag so an error can be traced to one college. Tests cover the
+scrubber (`main_app/tests/test_observability.py`).
+
+Set `SENTRY_DSN`, `SENTRY_ENVIRONMENT` (staging or production) and `GIT_COMMIT` in Coolify. **Decide the region before creating
+the project:** Sentry's data centres are in the US and the EU, not India. With the scrubbing above no personal data is sent, but
+the DPDP "India data residency" rule in `CLAUDE.md` is about personal data, so confirm you are comfortable, or self-host Sentry
+later. After the first deploy, raise a test error on staging and open it in Sentry to confirm there is no name, e-mail, phone or
+request body in it. Create an alert rule: e-mail on any new issue.
+
+## 7. Not covered yet (be honest with colleges about these)
+
+- Uploaded files (pictures, consent-form scans) live on the server's disk (`media/<college>/`) and are **not** in the database
+  dump. Until they move to Supabase Storage with its own copy, add a nightly copy of `media/` to the same R2 bucket (encrypted).
+- No point-in-time recovery: you can go back to a night, not to a minute. Supabase Pro adds that on its side.
+- The monthly drill is a person's job; a calendar reminder is the control.
