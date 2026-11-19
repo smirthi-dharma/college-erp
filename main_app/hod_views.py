@@ -89,10 +89,10 @@ def add_staff(request):
             passport = request.FILES.get('profile_pic')
             fs = default_storage
             filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+            stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
             try:
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=2, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                    email=email, password=password, user_type=2, first_name=first_name, last_name=last_name, profile_pic=stored_name)
                 user.gender = gender
                 user.address = address
                 user.phone = form.cleaned_data.get('phone', '')
@@ -128,10 +128,10 @@ def add_student(request):
             passport = request.FILES['profile_pic']
             fs = default_storage
             filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+            stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
             try:
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                    email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=stored_name)
                 user.gender = gender
                 user.address = address
                 user.phone = student_form.cleaned_data.get('phone', '')
@@ -199,8 +199,8 @@ def edit_staff(request, staff_id):
                 if passport is not None:
                     fs = default_storage
                     filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    user.profile_pic = passport_url
+                    stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
+                    user.profile_pic = stored_name
                 user.first_name = first_name
                 user.last_name = last_name
                 user.gender = gender
@@ -245,8 +245,8 @@ def edit_student(request, student_id):
                 if passport is not None:
                     fs = default_storage
                     filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    user.profile_pic = passport_url
+                    stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
+                    user.profile_pic = stored_name
                 user.username = username
                 user.email = email
                 if password is not None:
@@ -335,8 +335,8 @@ def admin_view_profile(request):
                 if passport is not None:
                     fs = default_storage
                     filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    custom_user.profile_pic = passport_url
+                    stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
+                    custom_user.profile_pic = stored_name
                 custom_user.first_name = first_name
                 custom_user.last_name = last_name
                 custom_user.save()

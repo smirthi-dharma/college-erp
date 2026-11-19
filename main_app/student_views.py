@@ -113,8 +113,8 @@ def student_view_profile(request):
                 if passport is not None:
                     fs = default_storage
                     filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
+                    stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
+                    admin.profile_pic = stored_name
                 admin.first_name = first_name
                 admin.last_name = last_name
                 admin.address = address
