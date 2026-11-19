@@ -54,6 +54,12 @@ class CustomUser(AbstractUser):
     updated_at = models.DateTimeField(auto_now=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
+
+    @property
+    def photo_url(self):
+        """Where this user's picture is served (an authenticated view), or '' when there is none."""
+        from django.urls import reverse
+        return reverse('profile_photo', args=[self.pk]) if self.profile_pic else ''
     objects = CustomUserManager()
 
     def save(self, *args, **kwargs):

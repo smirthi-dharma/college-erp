@@ -48,6 +48,18 @@ class CustomUserForm(FormSettings):
             if self.instance.pk is not None:
                 self.fields['password'].widget.attrs['placeholder'] = "Fill this only if you wish to update password"
 
+    MAX_PICTURE_BYTES = 2 * 1024 * 1024
+    PICTURE_FORMATS = ('JPEG', 'PNG', 'WEBP')
+
+    def clean_profile_pic(self):
+        picture = self.cleaned_data.get('profile_pic')
+        if picture and hasattr(picture, 'image'):  # a new upload (an unchanged picture has no image attached)
+            if picture.size > self.MAX_PICTURE_BYTES:
+                raise forms.ValidationError("The picture must be smaller than 2 MB.")
+            if picture.image.format not in self.PICTURE_FORMATS:
+                raise forms.ValidationError("Use a JPEG, PNG or WebP picture.")
+        return picture
+
     def clean_password(self):
         # The inherited forms stored whatever the HoD typed ('1234'); apply the configured validators.
         password = self.cleaned_data.get('password')

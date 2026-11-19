@@ -32,4 +32,4 @@ urlpatterns = [
     path("accounts/login/", public_view(RedirectView.as_view(pattern_name='login_page'))),
     path("accounts/", include("django.contrib.auth.urls")),
     path(settings.ADMIN_URL, admin.site.urls),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)  # uploads are never served from a URL (see main_app/photos.py)

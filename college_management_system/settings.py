@@ -93,6 +93,7 @@ DATABASE_ROUTERS = ('django_tenants.routers.TenantSyncRouter',)
 MIDDLEWARE = [
     'django_tenants.middleware.main.TenantMainMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'main_app.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -233,6 +234,29 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
+
+# Content-Security-Policy (see main_app.middleware.SecurityHeadersMiddleware). Everything comes from our own origin,
+# plus the few third-party hosts the pages use: jsDelivr (Bootstrap, Chart.js, icons), Google Fonts, reCAPTCHA.
+# 'unsafe-inline' stays for scripts and styles until the inline <script> blocks and onclick/onerror attributes move into
+# files (the follow-up that allows a per-request nonce instead); the rest of the policy already blocks plugins, framing,
+# <base> and form hijacking, and any script or frame from a host not listed here.
+CSP_DIRECTIVES = {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://www.google.com/recaptcha/',
+                   'https://www.gstatic.com/recaptcha/'],
+    'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com',
+                  'https://code.ionicframework.com'],
+    'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'https://code.ionicframework.com'],
+    'img-src': ["'self'", 'data:', 'blob:'],
+    'connect-src': ["'self'"],
+    'frame-src': ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
+    'object-src': ["'none'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'none'"],
+}
+# CSP_REPORT_ONLY=1 sends the policy as "report only" (the browser logs violations but blocks nothing): a safe switch on staging.
+CSP_REPORT_ONLY = os.environ.get('CSP_REPORT_ONLY', '') == '1'
 # e.g. DJANGO_CSRF_TRUSTED_ORIGINS=https://*.ourerp.in
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 

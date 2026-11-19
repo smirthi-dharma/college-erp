@@ -41,7 +41,7 @@ Leave, feedback, in-app notifications, Firebase push and the dead `erpnext_*` te
 ## Tenancy follow-ups
 
 - Public schema has no host or pages yet: unknown/bare hosts return 404. A super-admin site (create colleges, subscriptions) is still to build; today colleges are created with `manage.py create_demo_college` or the shell.
-- Uploaded files are now stored under `MEDIA_ROOT/<schema>/`, but serving them to the right college and profile-picture URLs are not tested or fixed yet (existing `media/` files from the upstream repo are not under any college folder). Do this before photo upload goes live.
+- Uploaded pictures are stored under `MEDIA_ROOT/<schema>/` and served only through the authenticated, role- and college-checked `/photo/<id>/` view (2026-11-19). Other uploads (consent scans) already had their own private download views.
 - The tenant test base creates colleges outside Django's test transaction; each test run creates and drops two schemas (about 5 seconds).
 - Not covered by tests yet: cross-college access via Celery jobs, cache keys, backups/restore per college (add when those exist).
 - Local dev: a user's role pages need the right data (e.g. a student with no course crashes `/student/view/attendance/`, same family as the other 500s).
