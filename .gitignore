@@ -39,5 +39,7 @@ dmypy.json
 
 # User uploads are data, not source
 /media/
+.env.test-db
+.env.staging
 .coverage
 htmlcov/
