@@ -1,192 +1,221 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
-{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block page_title %}Staff Dashboard{% endblock page_title %}
+
+{% block breadcrumb %}
+    <li class="breadcrumb-item active">Staff Dashboard</li>
+{% endblock breadcrumb %}
+
 {% block content %}
-<section class="content">
-    <div class="container-fluid">
-        <!-- Small boxes (Stat box) -->
-        <div class="row">
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h3>{{total_students}}</h3>
-
-                        <p>Total Students</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-user-graduate"></i>
-                    </div>
-                   
-                </div>
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon primary">
+                <i class="fas fa-user-graduate"></i>
             </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>{{total_attendance}}</h3>
-
-                        <p>Total Attendance Taken</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-calendar-alt"></i>
-                    </div>
-                   
-                </div>
-            </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-maroon">
-                    <div class="inner">
-                        <h3>{{total_leave}}</h3>
-
-                        <p>Total Leave Applied</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-sign-out-alt"></i>
-                    </div>
-                   
-                </div>
-            </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h3>{{total_subject}}</h3>
-
-                        <p>Total Subjects</p>
-                    </div>
-                    <div class="icon">
-                      <i class="nav-icon fas fa-book"></i>
-                    </div>
-                   
-                </div>
-            </div>
-            <!-- ./col -->
+            <div class="stat-number" style="color: var(--primary-color);">{{ total_students }}</div>
+            <p class="stat-label">Total Students</p>
         </div>
-        <!-- /.row -->
-        <!-- Main row -->
-        <div class="row">
-            <div class="col-md-6">
-                <!-- LINE CHART -->
-                <div class="card card-secondary">
-                  <div class="card-header">
-                    <h3 class="card-title">{{page_title}}</h3>
-    
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                      </button>
-                      <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="chart">
-                      <canvas id="pieChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                    </div>
-                  </div></div>
-                  <!-- /.card-body -->
-                </div>
-                <div class="col-md-6">
-                    <div class="card card-secondary">
-              <div class="card-header">
-                <h3 class="card-title">{{page_title}}</h3>
 
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                  </button>
-                  <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="chart">
-                  <canvas id="barChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                </div>
-              </div>
-              <!-- /.card-body -->
+        <div class="stat-card">
+            <div class="stat-icon success">
+                <i class="fas fa-calendar-check"></i>
             </div>
-                </div>
-            <!-- right col -->
+            <div class="stat-number" style="color: var(--success-color);">{{ total_attendance }}</div>
+            <p class="stat-label">Total Attendance Taken</p>
         </div>
-        <!-- /.row (main row) -->
-    </div><!-- /.container-fluid -->
-</section>
+
+
+        <div class="stat-card">
+            <div class="stat-icon danger">
+                <i class="fas fa-book"></i>
+            </div>
+            <div class="stat-number" style="color: var(--danger-color);">{{ total_subject }}</div>
+            <p class="stat-label">Total Subjects</p>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row">
+        <!-- Subject-wise Attendance Chart -->
+        <div class="col-lg-6">
+            <div class="erpnext-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Subject-wise Attendance
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="barChart" style="height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="erpnext-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-bolt me-2"></i>
+                        Quick Actions
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'attendance_home' %}" class="btn btn-primary btn-sm mt-2 w-100">
+                                <i class="fas fa-check-circle mb-2"></i><br>
+                                Take Attendance
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'staff_add_result' %}" class="btn btn-success btn-sm mt-2 w-100">
+                                <i class="fas fa-plus-circle mb-2"></i><br>
+                                Add Result
+                            </a>
+                        </div>                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="row">
+        <div class="col-12">
+            <div class="erpnext-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-clock me-2"></i>
+                        Recent Activities
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="stat-icon success me-3">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Attendance Records</h6>
+                                    <small class="text-muted">{{ total_attendance }} records taken</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="stat-icon warning me-3">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Students Managed</h6>
+                                    <small class="text-muted">{{ total_students }} students in classes</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="stat-icon primary me-3">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Subjects Teaching</h6>
+                                    <small class="text-muted">{{ total_subject }} subjects assigned</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock content %}
 
 {% block custom_js %}
-  <script>
-      $(document).ready(function(){
-        var donutData        = {
-            labels: ['Attendance', 'Leave'],
-            datasets: [
-              {
-                data:[{{total_attendance}}, {{total_leave}}],
-                backgroundColor : ['#00a65a', '#f39c12',],
-              }
-            ]
-          }
-        var pieChartCanvas = $('#pieChart').get(0).getContext('2d')
-        var pieData        = donutData;
-        var pieOptions     = {
-          maintainAspectRatio : false,
-          responsive : true,
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize chart instances and creators arrays
+        window.chartInstances = window.chartInstances || [];
+        window.chartCreators = window.chartCreators || [];
+
+        // Chart.js Configuration
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif';
+        
+        // Set initial colors based on current theme
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        const textColor = isDarkMode ? '#e0e0e0' : '#262626';
+        Chart.defaults.color = textColor;
+        
+        // ERPNext-style color palette using CSS variables
+        const colors = {
+            primary: getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#5e64ff',
+            success: getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim() || '#28a745',
+            warning: getComputedStyle(document.documentElement).getPropertyValue('--warning-color').trim() || '#ffc107',
+            danger: getComputedStyle(document.documentElement).getPropertyValue('--danger-color').trim() || '#dc3545',
+            info: getComputedStyle(document.documentElement).getPropertyValue('--info-color').trim() || '#17a2b8',
+            light: getComputedStyle(document.documentElement).getPropertyValue('--light-color').trim() || '#f8f9fc',
+            dark: getComputedStyle(document.documentElement).getPropertyValue('--dark-color').trim() || '#262626'
+        };
+
+        function createBarChart() {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const textColor = isDarkMode ? '#e0e0e0' : '#262626';
+            const gridColor = isDarkMode ? '#404040' : '#f1f3f4';
+            
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            const barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ subject_list|safe }},
+                    datasets: [{
+                        label: 'Attendance Count',
+                        data: {{ attendance_list }},
+                        backgroundColor: colors.info,
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: gridColor
+                            },
+                            ticks: {
+                                color: textColor
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: textColor
+                            }
+                        }
+                    }
+                }
+            });
+            window.chartInstances.push(barChart);
+            return barChart;
         }
-        //Create pie or douhnut chart
-        // You can switch between pie and douhnut using the method below.
-        var pieChart = new Chart(pieChartCanvas, {
-          type: 'pie',
-          data: pieData,
-          options: pieOptions      
-        });
 
-        var subject_list = {{ subject_list|safe|escape }};
-        var attendance_list = {{ attendance_list }};
-  
-            var barChartData = {
-      labels  : subject_list,
-      datasets: [
-      {
-        label               : 'Attendance Per Subject',
-        backgroundColor     : '#17A2B8',
-        borderColor         : 'rgba(60,141,188,0.8)',
-        pointRadius          : false,
-        pointColor          : '#3b8bba',
-        pointStrokeColor    : 'rgba(60,141,188,1)',
-        pointHighlightFill  : '#fff',
-        pointHighlightStroke: 'rgba(60,141,188,1)',
-        data                : attendance_list
-      }, 
-      
-      ]
-    }
-        var barChartCanvas = $('#barChart').get(0).getContext('2d')
-        var temp0 = barChartData.datasets[0]
-        //var temp1 = areaChartData.datasets[1]
-        barChartData.datasets[0] = temp0
-       // barChartData.datasets[1] = temp0
-    
-    var stackedBarChartOptions = {
-      responsive              : true,
-      maintainAspectRatio     : false,
-      scales: {
-        xAxes: [{
-          stacked: true,
-        }],
-        yAxes: [{
-          stacked: true
-        }]
-      }
-    }
-    
-        var barChart = new Chart(barChartCanvas, {
-          type: 'bar', 
-          data: barChartData,
-          options: stackedBarChartOptions
-        })
-      })
-
-    
-  </script>
+        // Create initial bar chart
+        createBarChart();
+        window.chartCreators.push(createBarChart);
+        console.log('Registered bar chart creator, total creators:', window.chartCreators.length);
+    });
+</script>
 {% endblock custom_js %}

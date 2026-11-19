@@ -3,7 +3,7 @@
 <!-- Sidebar Header -->
 <div class="sidebar-header">
     <div class="sidebar-user">
-        <img src="{{ request.user.profile_pic}}" alt="User Avatar" class="sidebar-user-avatar" id="sidebar-avatar" onerror="showDefaultAvatar()">
+        <img src="{{ request.user.photo_url }}" alt="User Avatar" class="sidebar-user-avatar" id="sidebar-avatar" onerror="showDefaultAvatar()">
         <i class="fas fa-user-circle sidebar-default-avatar" id="default-avatar" style="display: none;"></i>
         <div class="sidebar-user-info">
             <h6>{{ user.get_full_name|default:user.username }}</h6>
@@ -109,25 +109,6 @@
                 <span class="nav-text">Manage Students</span>
             </a>
         </div>
-
-        <h6 class="nav-section-title">Communication</h6>
-        
-        <div class="nav-item">
-            {% url 'admin_notify_staff' as admin_notify_staff %}
-            <a href="{{ admin_notify_staff }}" class="nav-link {% if admin_notify_staff == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-bell"></i>
-                <span class="nav-text">Notify Staff</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'admin_notify_student' as admin_notify_student %}
-            <a href="{{ admin_notify_student }}" class="nav-link {% if admin_notify_student == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-bullhorn"></i>
-                <span class="nav-text">Notify Students</span>
-            </a>
-        </div>
-
         <h6 class="nav-section-title">Reports & Analytics</h6>
         
         <div class="nav-item">
@@ -157,41 +138,6 @@
                 <span class="nav-text">View Attendance</span>
             </a>
         </div>
-
-        <div class="nav-item">
-            {% url 'student_feedback_message' as student_feedback_message %}
-            <a href="{{ student_feedback_message }}" class="nav-link {% if student_feedback_message == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-comments"></i>
-                <span class="nav-text">Student Feedback</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'staff_feedback_message' as staff_feedback_message %}
-            <a href="{{ staff_feedback_message }}" class="nav-link {% if staff_feedback_message == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-comment-dots"></i>
-                <span class="nav-text">Staff Feedback</span>
-            </a>
-        </div>
-
-        <h6 class="nav-section-title">Leave Management</h6>
-        
-        <div class="nav-item">
-            {% url 'view_staff_leave' as view_staff_leave %}
-            <a href="{{ view_staff_leave }}" class="nav-link {% if view_staff_leave == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-calendar-check"></i>
-                <span class="nav-text">Staff Leave</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'view_student_leave' as view_student_leave %}
-            <a href="{{ view_student_leave }}" class="nav-link {% if view_student_leave == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-calendar-times"></i>
-                <span class="nav-text">Student Leave</span>
-            </a>
-        </div>
-
     {% elif user.user_type == '2' %}
         <!-- Staff Navigation -->
         <h6 class="nav-section-title">Main</h6>
@@ -247,33 +193,6 @@
                 <span class="nav-text">Take Attendance</span>
             </a>
         </div>
-
-        <h6 class="nav-section-title">Communication</h6>
-        
-        <div class="nav-item">
-            {% url 'staff_view_notification' as staff_view_notification %}
-            <a href="{{ staff_view_notification }}" class="nav-link {% if staff_view_notification == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-bell"></i>
-                <span class="nav-text">Notifications</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'staff_apply_leave' as staff_apply_leave %}
-            <a href="{{ staff_apply_leave }}" class="nav-link {% if staff_apply_leave == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-calendar-plus"></i>
-                <span class="nav-text">Apply for Leave</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'staff_feedback' as staff_feedback %}
-            <a href="{{ staff_feedback }}" class="nav-link {% if staff_feedback == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-comment-alt"></i>
-                <span class="nav-text">Feedback</span>
-            </a>
-        </div>
-
     {% else %}
         <!-- Student Navigation -->
         <h6 class="nav-section-title">Main</h6>
@@ -321,32 +240,6 @@
             <a href="{{ student_view_result }}" class="nav-link {% if student_view_result == request.path %}active{% endif %}">
                 <i class="nav-icon fas fa-chart-bar"></i>
                 <span class="nav-text">View Results</span>
-            </a>
-        </div>
-
-        <h6 class="nav-section-title">Communication</h6>
-        
-        <div class="nav-item">
-            {% url 'student_view_notification' as student_view_notification %}
-            <a href="{{ student_view_notification }}" class="nav-link {% if student_view_notification == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-bell"></i>
-                <span class="nav-text">Notifications</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'student_apply_leave' as student_apply_leave %}
-            <a href="{{ student_apply_leave }}" class="nav-link {% if student_apply_leave == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-calendar-plus"></i>
-                <span class="nav-text">Apply for Leave</span>
-            </a>
-        </div>
-
-        <div class="nav-item">
-            {% url 'student_feedback' as student_feedback %}
-            <a href="{{ student_feedback }}" class="nav-link {% if student_feedback == request.path %}active{% endif %}">
-                <i class="nav-icon fas fa-comment-alt"></i>
-                <span class="nav-text">Feedback</span>
             </a>
         </div>
     {% endif %}

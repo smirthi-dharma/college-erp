@@ -39,11 +39,11 @@
                                     <td>{{student.phone|default:"-"}}</td>
                                     <td>{{student.student.section|default:"-"}}</td>
                                     <td>
-                                        {% if student.profile_pic == ""  %}
+                                        {% if not student.photo_url %}
                                         No Image
                                         {% else %}
                                         <img class="img img-fluid mb-2" height="56" width="56"
-                                            src="{{student.profile_pic}}" alt="">
+                                            src="{{ student.photo_url }}" alt="">
                                         {% endif %}
                                     </td>
                                     

@@ -39,11 +39,11 @@
                                     <td>{{staff.phone|default:"-"}}</td>
                                     <td>{{staff.staff.department|default:"-"}}</td>
                                     <td>
-                                        {% if staff.profile_pic == ""  %}
+                                        {% if not staff.photo_url %}
                                         No Image
                                         {% else %}
                                         <img class="img img-fluid mb-2" height="56" width="56"
-                                            src="{{staff.profile_pic}}" alt="">
+                                            src="{{ staff.photo_url }}" alt="">
                                         {% endif %}
                                     </td>
                                     <td>

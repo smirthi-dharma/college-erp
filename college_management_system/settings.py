@@ -10,13 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
-import json
 import os
 import sys
 from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -91,8 +91,10 @@ PUBLIC_SCHEMA_URLCONF = 'college_management_system.public_urls'
 DATABASE_ROUTERS = ('django_tenants.routers.TenantSyncRouter',)
 
 MIDDLEWARE = [
+    'main_app.health.HealthCheckMiddleware',  # first: /healthz needs no host, tenant, login or HTTPS
     'django_tenants.middleware.main.TenantMainMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'main_app.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -123,7 +125,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'main_app.context_processors.firebase',
             ],
         },
     },
@@ -222,12 +223,6 @@ STORAGES = {
 RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '')
 RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '')
 
-# Push notifications: leave FCM_SERVER_KEY unset to disable sending.
-FCM_SERVER_KEY = os.environ.get('FCM_SERVER_KEY', '')
-FCM_URL = os.environ.get('FCM_URL', 'https://fcm.googleapis.com/fcm/send')
-# Your own Firebase project's web config as JSON (public client settings, but never another project's).
-FIREBASE_WEB_CONFIG = json.loads(os.environ.get('FIREBASE_WEB_CONFIG') or '{}')
-
 # Uploaded files go to MEDIA_ROOT/<college schema>/...
 MULTITENANT_RELATIVE_MEDIA_ROOT = '%s'
 
@@ -240,6 +235,29 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
+
+# Content-Security-Policy (see main_app.middleware.SecurityHeadersMiddleware). Everything comes from our own origin,
+# plus the few third-party hosts the pages use: jsDelivr (Bootstrap, Chart.js, icons), Google Fonts, reCAPTCHA.
+# 'unsafe-inline' stays for scripts and styles until the inline <script> blocks and onclick/onerror attributes move into
+# files (the follow-up that allows a per-request nonce instead); the rest of the policy already blocks plugins, framing,
+# <base> and form hijacking, and any script or frame from a host not listed here.
+CSP_DIRECTIVES = {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://www.google.com/recaptcha/',
+                   'https://www.gstatic.com/recaptcha/'],
+    'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com',
+                  'https://code.ionicframework.com'],
+    'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'https://code.ionicframework.com'],
+    'img-src': ["'self'", 'data:', 'blob:'],
+    'connect-src': ["'self'"],
+    'frame-src': ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
+    'object-src': ["'none'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'none'"],
+}
+# CSP_REPORT_ONLY=1 sends the policy as "report only" (the browser logs violations but blocks nothing): a safe switch on staging.
+CSP_REPORT_ONLY = os.environ.get('CSP_REPORT_ONLY', '') == '1'
 # e.g. DJANGO_CSRF_TRUSTED_ORIGINS=https://*.ourerp.in
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
 
@@ -283,6 +301,8 @@ OTP_TOTP_ISSUER = 'College ERP'
 #   WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET (signs webhooks), WHATSAPP_VERIFY_TOKEN.
 # Per-college secrets in the database are encrypted with this key (a Fernet key: see docs/DEV_SETUP.md).
 FIELD_ENCRYPTION_KEY = os.environ.get('FIELD_ENCRYPTION_KEY', '')
+# Preferred: comma-separated, newest first, so keys can be rotated (docs/KEY_MANAGEMENT.md).
+FIELD_ENCRYPTION_KEYS = [k.strip() for k in os.environ.get('FIELD_ENCRYPTION_KEYS', '').split(',') if k.strip()]
 
 CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_TASK_ALWAYS_EAGER = sys.argv[1:2] == ['test']  # tests run tasks inline and never need Redis
@@ -291,4 +311,10 @@ CELERY_TIMEZONE = 'Asia/Kolkata'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BEAT_SCHEDULE = {
     'dispatch-whatsapp-digests': {'task': 'messaging.tasks.dispatch_due_digests', 'schedule': 60.0},
+    'purge-old-whatsapp-messages': {'task': 'messaging.tasks.purge_old_messages', 'schedule': crontab(hour=3, minute=30)},  # 03:30 IST
 }
+
+# Error tracking (off unless SENTRY_DSN is set; sends no personal data, see college_management_system/observability.py).
+from college_management_system.observability import init_sentry  # noqa: E402
+
+init_sentry()

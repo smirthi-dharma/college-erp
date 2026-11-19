@@ -10,7 +10,7 @@ from django_tenants.utils import tenant_context
 
 from colleges.models import College
 
-from . import services
+from . import retention, services
 
 logger = logging.getLogger(__name__)
 
@@ -43,3 +43,16 @@ def dispatch_due_digests():
         except Exception:  # one college's problem must not stop the others
             logger.exception('Digest dispatch failed for %s', college.schema_name)
     return queued
+
+
+@shared_task(name='messaging.tasks.purge_old_messages')
+def purge_old_messages():
+    """Nightly: delete each college's message rows older than its retention."""
+    removed = 0
+    for college in College.objects.filter(is_active=True).exclude(schema_name='public'):
+        try:
+            with tenant_context(college):
+                removed += retention.purge()[0]
+        except Exception:  # one college's problem must not stop the others
+            logger.exception('Message purge failed for %s', college.schema_name)
+    return removed

@@ -1,4 +1,25 @@
+from django.conf import settings
 from django.http import HttpResponseForbidden
+
+
+def build_csp(directives):
+    return '; '.join('%s %s' % (name, ' '.join(values)) for name, values in directives.items())
+
+
+class SecurityHeadersMiddleware:
+    """Adds Content-Security-Policy (from settings.CSP_DIRECTIVES) and Permissions-Policy to every response."""
+
+    PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        header = 'Content-Security-Policy-Report-Only' if settings.CSP_REPORT_ONLY else 'Content-Security-Policy'
+        response.headers.setdefault(header, build_csp(settings.CSP_DIRECTIVES))
+        response.headers.setdefault('Permissions-Policy', self.PERMISSIONS_POLICY)
+        return response
 
 
 class LoginCheckMiddleWare:

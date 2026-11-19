@@ -59,6 +59,19 @@ class SeedDemoTests(TwoCollegeTestCase):
             self.assertEqual(consents, {'yes', 'no', 'unknown'})
             self.assertTrue(all(g.phone.startswith('+91900000') for g in Guardian.objects.all()))  # obviously fake
 
+    def test_demo_consent_comes_with_evidence(self):
+        from main_app.models import ConsentRecord, Guardian
+        seed()
+        with tenant_context(self.demo):
+            for guardian in Guardian.objects.exclude(whatsapp_consent='unknown'):
+                record = guardian.consent_records.get()
+                self.assertEqual((record.method, record.value), ('paper_form', guardian.whatsapp_consent))
+                self.assertEqual(record.recorded_by_email, 'admin@%s.in' % SCHEMA)
+            self.assertEqual(ConsentRecord.objects.count(), 7)  # 9 guardians, 2 of them still "unknown"
+        seed()
+        with tenant_context(self.demo):
+            self.assertEqual(ConsentRecord.objects.count(), 7)  # a re-run adds no evidence
+
     def test_every_role_has_something_to_see(self):
         from main_app.models import CustomUser
         from student360.services import visible_students

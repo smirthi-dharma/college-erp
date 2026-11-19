@@ -4,10 +4,9 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.core.files.storage import default_storage
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_POST
 
 from .access import STUDENT, role_required
 from .forms import *
@@ -59,7 +58,7 @@ def student_home(request):
         'page_title': 'Student Homepage'
 
     }
-    return render(request, 'student_template/erpnext_student_home.html', context)
+    return render(request, 'student_template/home_content.html', context)
 
 
 @role_required(STUDENT)
@@ -87,55 +86,8 @@ def student_view_attendance(request):
         return JsonResponse(json.dumps(json_data), safe=False)
 
 
-@role_required(STUDENT)
-def student_apply_leave(request):
-    form = LeaveReportStudentForm(request.POST or None)
-    student = get_object_or_404(Student, admin_id=request.user.id)
-    context = {
-        'form': form,
-        'leave_history': LeaveReportStudent.objects.filter(student=student),
-        'page_title': 'Apply for leave'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.student = student
-                obj.save()
-                messages.success(
-                    request, "Application for leave has been submitted for review")
-                return redirect(reverse('student_apply_leave'))
-            except Exception:
-                messages.error(request, "Could not submit")
-        else:
-            messages.error(request, "Form has errors!")
-    return render(request, "student_template/student_apply_leave.html", context)
 
 
-@role_required(STUDENT)
-def student_feedback(request):
-    form = FeedbackStudentForm(request.POST or None)
-    student = get_object_or_404(Student, admin_id=request.user.id)
-    context = {
-        'form': form,
-        'feedbacks': FeedbackStudent.objects.filter(student=student),
-        'page_title': 'Student Feedback'
-
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.student = student
-                obj.save()
-                messages.success(
-                    request, "Feedback submitted for review")
-                return redirect(reverse('student_feedback'))
-            except Exception:
-                messages.error(request, "Could not Submit!")
-        else:
-            messages.error(request, "Form has errors!")
-    return render(request, "student_template/student_feedback.html", context)
 
 
 @role_required(STUDENT)
@@ -161,8 +113,8 @@ def student_view_profile(request):
                 if passport is not None:
                     fs = default_storage
                     filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
+                    stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
+                    admin.profile_pic = stored_name
                 admin.first_name = first_name
                 admin.last_name = last_name
                 admin.address = address
@@ -180,23 +132,8 @@ def student_view_profile(request):
     return render(request, "student_template/student_view_profile.html", context)
 
 
-@role_required(STUDENT)
-@require_POST
-def student_fcmtoken(request):
-    request.user.fcm_token = request.POST.get('token', '')
-    request.user.save(update_fields=['fcm_token'])
-    return HttpResponse("True")
 
 
-@role_required(STUDENT)
-def student_view_notification(request):
-    student = get_object_or_404(Student, admin=request.user)
-    notifications = NotificationStudent.objects.filter(student=student)
-    context = {
-        'notifications': notifications,
-        'page_title': "View Notifications"
-    }
-    return render(request, "student_template/student_view_notification.html", context)
 
 
 @role_required(STUDENT)

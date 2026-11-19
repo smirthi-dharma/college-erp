@@ -17,7 +17,7 @@ Last updated 2026-11-09. Base: fork of Ansarimajid/College-ERP (MIT). Stack now:
 
 Roles: 3 of 9 exist (HoD, Staff, Student). Missing Super admin, Principal/Management, IQAC coordinator, Office staff, Parent, Placement officer. Role checks are one middleware keyed on module name, not per-endpoint.
 
-Out of pilot scope but present in the base (remove or hide): leave, feedback, `erpnext_*` templates. The library pages are removed (URLs, menus, views); the `Book`, `IssuedBook`, `Library` models remain until a migration drops them.
+Leave, feedback, in-app notifications, Firebase push and the dead `erpnext_*` templates were removed on 2026-11-12 (`chore/remove-legacy-features`). The library pages are removed (URLs, menus, views); the `Book`, `IssuedBook`, `Library` models remain until a migration drops them.
 
 ## Non-negotiables
 
@@ -28,8 +28,8 @@ Out of pilot scope but present in the base (remove or hide): leave, feedback, `e
 | Daily off-server backups, monthly restore test | Absent. |
 | DPDP: consent records, export/deletion, India residency | Absent. |
 | University rules as configuration | Not met (fixed `test`/`exam` fields). |
-| DRF, Celery, Redis | Absent. |
-| React + Tailwind frontend, Capacitor Android app | Absent (server-rendered templates). |
+| Celery, Redis | Built (WhatsApp digest, message-log purge); staging compose stack is in PR #13. No DRF by decision. |
+| Frontend and Android app | Decided 2026-11-19: server-rendered Django + PWA (manifest, service worker, installable); Play Store later via a Trusted Web Activity. React, DRF and Capacitor are not planned for the pilot. The PWA files are not built yet. |
 
 ## Known bugs (fix when touching the area)
 
@@ -41,7 +41,7 @@ Out of pilot scope but present in the base (remove or hide): leave, feedback, `e
 ## Tenancy follow-ups
 
 - Public schema has no host or pages yet: unknown/bare hosts return 404. A super-admin site (create colleges, subscriptions) is still to build; today colleges are created with `manage.py create_demo_college` or the shell.
-- Uploaded files are now stored under `MEDIA_ROOT/<schema>/`, but serving them to the right college and profile-picture URLs are not tested or fixed yet (existing `media/` files from the upstream repo are not under any college folder). Do this before photo upload goes live.
+- Uploaded pictures are stored under `MEDIA_ROOT/<schema>/` and served only through the authenticated, role- and college-checked `/photo/<id>/` view (2026-11-19). Other uploads (consent scans) already had their own private download views.
 - The tenant test base creates colleges outside Django's test transaction; each test run creates and drops two schemas (about 5 seconds).
 - Not covered by tests yet: cross-college access via Celery jobs, cache keys, backups/restore per college (add when those exist).
 - Local dev: a user's role pages need the right data (e.g. a student with no course crashes `/student/view/attendance/`, same family as the other 500s).

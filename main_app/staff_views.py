@@ -34,7 +34,6 @@ def staff_home(request):
     offerings = _own_offerings(staff)
     total_students = Enrolment.objects.filter(
         offering__in=offerings, status=Enrolment.ACTIVE).values('student').distinct().count()
-    total_leave = LeaveReportStaff.objects.filter(staff=staff).count()
     total_subject = offerings.count()
     total_attendance = Attendance.objects.filter(offering__in=offerings).count()
     attendance_list = []
@@ -46,12 +45,11 @@ def staff_home(request):
         'page_title': 'Staff Panel - ' + str(staff.admin.first_name) + ' ' + str(staff.admin.last_name[:1]) + ' (' + str(staff.department or 'No department') + ')',
         'total_students': total_students,
         'total_attendance': total_attendance,
-        'total_leave': total_leave,
         'total_subject': total_subject,
         'subject_list': js_json(subject_list),
         'attendance_list': js_json(attendance_list)
     }
-    return render(request, "staff_template/erpnext_staff_home.html", context)
+    return render(request, "staff_template/home_content.html", context)
 
 
 @role_required(STAFF)
@@ -63,53 +61,8 @@ def get_students(request):
     return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
 
 
-@role_required(STAFF)
-def staff_apply_leave(request):
-    form = LeaveReportStaffForm(request.POST or None)
-    staff = current_staff(request)
-    context = {
-        'form': form,
-        'leave_history': LeaveReportStaff.objects.filter(staff=staff),
-        'page_title': 'Apply for Leave'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.staff = staff
-                obj.save()
-                messages.success(
-                    request, "Application for leave has been submitted for review")
-                return redirect(reverse('staff_apply_leave'))
-            except Exception:
-                messages.error(request, "Could not apply!")
-        else:
-            messages.error(request, "Form has errors!")
-    return render(request, "staff_template/staff_apply_leave.html", context)
 
 
-@role_required(STAFF)
-def staff_feedback(request):
-    form = FeedbackStaffForm(request.POST or None)
-    staff = current_staff(request)
-    context = {
-        'form': form,
-        'feedbacks': FeedbackStaff.objects.filter(staff=staff),
-        'page_title': 'Add Feedback'
-    }
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.staff = staff
-                obj.save()
-                messages.success(request, "Feedback submitted for review")
-                return redirect(reverse('staff_feedback'))
-            except Exception:
-                messages.error(request, "Could not Submit!")
-        else:
-            messages.error(request, "Form has errors!")
-    return render(request, "staff_template/staff_feedback.html", context)
 
 
 @role_required(STAFF)
@@ -132,8 +85,8 @@ def staff_view_profile(request):
                 if passport is not None:
                     fs = default_storage
                     filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
+                    stored_name = filename  # the storage name; the picture is served by the photo view, never by URL
+                    admin.profile_pic = stored_name
                 admin.first_name = first_name
                 admin.last_name = last_name
                 admin.address = address
@@ -154,23 +107,8 @@ def staff_view_profile(request):
     return render(request, "staff_template/staff_view_profile.html", context)
 
 
-@role_required(STAFF)
-@require_POST
-def staff_fcmtoken(request):
-    request.user.fcm_token = request.POST.get('token', '')
-    request.user.save(update_fields=['fcm_token'])
-    return HttpResponse("True")
 
 
-@role_required(STAFF)
-def staff_view_notification(request):
-    staff = current_staff(request)
-    notifications = NotificationStaff.objects.filter(staff=staff)
-    context = {
-        'notifications': notifications,
-        'page_title': "View Notifications"
-    }
-    return render(request, "staff_template/staff_view_notification.html", context)
 
 
 @role_required(STAFF)

@@ -41,3 +41,5 @@ dmypy.json
 /media/
 .env.test-db
 .env.staging
+.coverage
+htmlcov/

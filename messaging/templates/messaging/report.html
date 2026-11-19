@@ -14,9 +14,10 @@
     {% if report.late_marked %}<p class="text-muted">{{ report.late_marked }} class(es) were marked after the send time and are not in the digest.</p>{% endif %}
   </div></div>
   {% if report.dry_run %}<div class="card"><div class="card-header"><h3 class="card-title">Dry run</h3></div><div class="card-body"><p>{{ report.dry_counts.dry_run }} message(s) would have been sent; {{ report.dry_counts.skipped_no_consent }} guardian(s) skipped for no consent. Nothing was sent.</p></div></div>{% endif %}
-  <div class="table-responsive"><table class="table table-sm table-bordered"><thead class="thead-light"><tr><th>Guardian</th><th>Mode</th><th>Status</th><th>Tries</th><th>Language</th><th>Message / error</th></tr></thead><tbody>
+  <div class="table-responsive"><table class="table table-sm table-bordered"><thead class="thead-light"><tr><th>Guardian</th><th>Mode</th><th>Status</th><th>Tries</th><th>Language</th><th>Message / error</th><th></th></tr></thead><tbody>
     {% for m in report.messages %}<tr><td>{{ m.guardian.full_name }}</td><td>{{ m.mode }}</td><td>{{ m.get_status_display }}</td><td>{{ m.attempts }}</td><td>{{ m.language }}</td>
-      <td>{% if m.last_error %}<span class="text-danger">{{ m.last_error }}</span>{% else %}{{ m.rendered_text }}{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="6">No messages.</td></tr>{% endfor %}</tbody></table></div>
+      <td>{% if m.last_error %}<span class="text-danger">{{ m.last_error }}</span>{% else %}{{ m.rendered_text }}{% endif %}{% if m.resend_count %}<br><small class="text-muted">Sent again {{ m.resend_count }} time(s), last by {{ m.last_resent_by }}</small>{% endif %}</td>
+      <td>{% if m.status == 'unknown' and m.mode == 'live' %}<a class="btn btn-sm btn-outline-warning" href="{% url 'messaging_resend' m.pk %}">Send again...</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="7">No messages.</td></tr>{% endfor %}</tbody></table></div>
 </div></section>
 {% endblock content %}

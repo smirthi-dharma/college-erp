@@ -18,35 +18,20 @@ from django.urls import path
 from main_app.access import STAFF, role_required
 from main_app.EditResultView import EditResultView
 
-from . import hod_views, staff_views, student_views, views
+from . import hod_views, photos, staff_views, student_views, views
 
 urlpatterns = [
     path("", views.login_page, name='login_page'),
+    path("photo/<int:user_id>/", photos.profile_photo, name='profile_photo'),
     path("get_attendance", views.get_attendance, name='get_attendance'),
-    path("firebase-messaging-sw.js", views.showFirebaseJS, name='showFirebaseJS'),
     path("doLogin/", views.doLogin, name='user_login'),
     path("logout_user/", views.logout_user, name='user_logout'),
     path("admin/home/", hod_views.admin_home, name='admin_home'),
     path("staff/add", hod_views.add_staff, name='add_staff'),
-    path("send_student_notification/", hod_views.send_student_notification,
-         name='send_student_notification'),
-    path("send_staff_notification/", hod_views.send_staff_notification,
-         name='send_staff_notification'),
-    path("admin_notify_student", hod_views.admin_notify_student,
-         name='admin_notify_student'),
-    path("admin_notify_staff", hod_views.admin_notify_staff,
-         name='admin_notify_staff'),
     path("admin_view_profile", hod_views.admin_view_profile,
          name='admin_view_profile'),
     path("check_email_availability", hod_views.check_email_availability,
          name="check_email_availability"),
-    path("student/view/feedback/", hod_views.student_feedback_message,
-         name="student_feedback_message",),
-    path("staff/view/feedback/", hod_views.staff_feedback_message,
-         name="staff_feedback_message",),
-    path("student/view/leave/", hod_views.view_student_leave,
-         name="view_student_leave",),
-    path("staff/view/leave/", hod_views.view_staff_leave, name="view_staff_leave",),
     path("attendance/view/", hod_views.admin_view_attendance,
          name="admin_view_attendance",),
     path("attendance/fetch/", hod_views.get_admin_attendance,
@@ -57,57 +42,28 @@ urlpatterns = [
     path("staff/edit/<int:staff_id>", hod_views.edit_staff, name='edit_staff'),
     path("staff/delete/<int:staff_id>",
          hod_views.delete_staff, name='delete_staff'),
-
-
-
-
     path("student/delete/<int:student_id>",
          hod_views.delete_student, name='delete_student'),
     path("student/edit/<int:student_id>",
          hod_views.edit_student, name='edit_student'),
 
-
     # Staff
     path("staff/home/", staff_views.staff_home, name='staff_home'),
-    path("staff/apply/leave/", staff_views.staff_apply_leave,
-         name='staff_apply_leave'),
-    path("staff/feedback/", staff_views.staff_feedback, name='staff_feedback'),
     path("staff/view/profile/", staff_views.staff_view_profile,
          name='staff_view_profile'),
     path("staff/get_students/", staff_views.get_students, name='get_students'),
-
-
-
-    path("staff/fcmtoken/", staff_views.staff_fcmtoken, name='staff_fcmtoken'),
-    path("staff/view/notification/", staff_views.staff_view_notification,
-         name="staff_view_notification"),
     path("staff/result/add/", staff_views.staff_add_result, name='staff_add_result'),
     path("staff/result/edit/", role_required(STAFF)(EditResultView.as_view()),
          name='edit_student_result'),
     path('staff/result/fetch/', staff_views.fetch_student_result,
          name='fetch_student_result'),
 
-
-
     # Student
     path("student/home/", student_views.student_home, name='student_home'),
     path("student/view/attendance/", student_views.student_view_attendance,
          name='student_view_attendance'),
-    path("student/apply/leave/", student_views.student_apply_leave,
-         name='student_apply_leave'),
-    path("student/feedback/", student_views.student_feedback,
-         name='student_feedback'),
     path("student/view/profile/", student_views.student_view_profile,
          name='student_view_profile'),
-    path("student/fcmtoken/", student_views.student_fcmtoken,
-         name='student_fcmtoken'),
-     # path('student/todo',student_views.todo,name='todo'),
-
-     
-
-    path("student/view/notification/", student_views.student_view_notification,
-         name="student_view_notification"),
     path('student/view/result/', student_views.student_view_result,
          name='student_view_result'),
-
 ]

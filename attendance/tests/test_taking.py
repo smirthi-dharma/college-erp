@@ -60,19 +60,42 @@ class SpeedTests(AttendanceTestBase):
         self.assertNotIn('$.ajax', body)
         self.assertNotIn('$(', body)
 
-    def test_submitting_a_class_of_150_is_fast_and_does_no_per_student_reads(self):
+    @staticmethod
+    def real_queries(ctx):
+        """The queries the code itself runs: not the tenant's per-cursor `SET search_path`, not savepoints."""
+        skip = ('SET search_path', 'SAVEPOINT', 'RELEASE SAVEPOINT')
+        return [q['sql'] for q in ctx.captured_queries if not q['sql'].startswith(skip)]
+
+    def test_submitting_a_class_runs_a_fixed_number_of_queries_however_big_the_class(self):
         import time
+        small_client = self.as_user(self.staff1)
+        with CaptureQueriesContext(connection) as small:
+            self.assertEqual(self.take(small_client, self.sub1, {self.student_pk(self.stud1): 'absent'}, key='a').status_code, 302)
         self.make_class_of(148)
         client = self.as_user(self.staff1)
-        with CaptureQueriesContext(connection) as ctx:
+        with CaptureQueriesContext(connection) as large:
             start = time.monotonic()
-            resp = self.take(client, self.sub1)
+            resp = self.take(client, self.sub1, {self.student_pk(self.stud1): 'absent'}, day=TODAY - datetime.timedelta(days=1), key='b')
             seconds = time.monotonic() - start
         self.assertEqual(resp.status_code, 302)
-        self.assertLess(seconds, 5)  # CI budget; locally well under 2 s
-        selects = [q for q in ctx.captured_queries if q['sql'].lstrip().upper().startswith('SELECT')]
-        self.assertLess(len(selects), 40, 'reads must not grow with the class size')
-        print(f'\n[150 students] submit {seconds:.2f}s, {len(ctx)} queries ({len(selects)} reads)')
+        self.assertLess(seconds, 5)  # CI budget; locally about 0.1 s
+        self.assertEqual(len(self.real_queries(large)), len(self.real_queries(small)),
+                         'the number of queries must not depend on the number of students')
+        self.assertLessEqual(len(self.real_queries(large)), 25)
+        self.assertEqual(len(self.reports(self.sub1, day=TODAY - datetime.timedelta(days=1))), 150)
+
+    def test_every_saved_report_of_a_big_class_is_in_the_audit_log(self):
+        from audit_trail.models import AuditLog
+        self.make_class_of(148)
+        self.take(self.as_user(self.staff1), self.sub1, {self.student_pk(self.stud1): 'absent'})
+        with tenant_context(self.college_a):
+            entries = AuditLog.objects.filter(model_label='main_app.AttendanceReport', action='create',
+                                              actor_email='staff1@a.in')
+            self.assertEqual(entries.count(), 150)
+            absent = [e for e in entries if e.changes.get('status') == [None, 'absent']]
+            self.assertEqual(len(absent), 1)
+            self.assertEqual(entries.first().request_path, '/attendance/class/%d/' % self.sub1)
+            self.assertEqual(entries.first().actor_role, '2')
 
 
 class CorrectnessTests(AttendanceTestBase):
@@ -239,15 +262,16 @@ class RetrySafetyTests(AttendanceTestBase):
     def test_a_failure_part_way_saves_nothing_and_the_retry_saves_exactly_once(self):
         client = self.as_user(self.staff1)
         client.raise_request_exception = False
-        real = AttendanceReport.save
+        from audit_trail import bulk
+        real = bulk._snapshot
         calls = []
 
-        def flaky(self_, *a, **k):
+        def flaky(instance):  # fails while the audit entries are being prepared, after the reports were inserted
             calls.append(1)
             if len(calls) == 2:
                 raise RuntimeError('network or server failure')
-            return real(self_, *a, **k)
-        with mock.patch.object(AttendanceReport, 'save', flaky):
+            return real(instance)
+        with mock.patch.object(bulk, '_snapshot', flaky):
             failed = self.take(client, self.sub1, {self.student_pk(self.stud1): 'absent'}, key='same-key')
         self.assertEqual(failed.status_code, 500)
         self.assertEqual(self.classes(self.sub1), 1)               # nothing half-saved (only the world's own class)

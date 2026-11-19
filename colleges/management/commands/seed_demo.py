@@ -70,7 +70,8 @@ class Command(BaseCommand):
         )
         from academics.services import enrol_section_in_core
         from attendance import services as attendance
-        from main_app.models import Attendance, CustomUser, Guardian, Staff, Student, StudentGuardian
+        from main_app.consent import record_consent
+        from main_app.models import Attendance, ConsentRecord, CustomUser, Guardian, Staff, Student, StudentGuardian
 
         counts = {}
 
@@ -102,10 +103,14 @@ class Command(BaseCommand):
             staff.department = dept
             staff.save()
 
+        admin_user = CustomUser.objects.get(email='admin@%s.in' % schema)
         guardians = []
-        for index, (name, _relation, consent) in enumerate(GUARDIANS):
-            guardians.append(get(Guardian, {'phone': '+91900000%04d' % (index + 1)},
-                                 {'full_name': name, 'whatsapp_consent': consent}))
+        for index, (name, _relation, answer) in enumerate(GUARDIANS):
+            guardian, created = Guardian.objects.get_or_create(phone='+91900000%04d' % (index + 1), defaults={'full_name': name})
+            counts['Guardian'] = counts.get('Guardian', 0) + created
+            if created and answer != Guardian.CONSENT_UNKNOWN:  # demo consent comes with evidence, like real consent must
+                record_consent(guardian, answer, ConsentRecord.PAPER_FORM, user=admin_user, note='Demo data, not a real form')
+            guardians.append(guardian)
 
         students = []
         for index, (first, last, guardian_index) in enumerate(STUDENTS):
@@ -134,7 +139,6 @@ class Command(BaseCommand):
         for offering in offerings:
             enrol_section_in_core(offering)
 
-        admin_user = CustomUser.objects.get(email='admin@%s.in' % schema)
         days = weekdays_before(today, 10)
         marked = 0
         for (_code, _name, period, _credits), offering in zip(SUBJECTS, offerings, strict=True):

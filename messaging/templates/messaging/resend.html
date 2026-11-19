@@ -1,0 +1,18 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <p><a href="{% url 'messaging_report' %}?date={{ message.digest_date|date:'Y-m-d' }}">Back to the report</a></p>
+  <div class="card"><div class="card-header"><h3 class="card-title">Send this message again?</h3></div><div class="card-body">
+    {% if message.status != 'unknown' or message.mode != 'live' %}<div class="alert alert-secondary">This message is "{{ message.get_status_display }}"; only a live message whose outcome is unclear can be sent again.</div>
+    {% else %}
+    <div class="alert alert-warning"><strong>The parent may receive this message twice.</strong> The status "unclear" means WhatsApp did not tell us whether it accepted the first attempt, so it may already have reached the phone. Check with the parent or the office first if you can. You can send an unclear message again at most {{ limits.0 }} times, and only within {{ limits.1 }} days.</div>
+    <p><strong>To:</strong> {{ message.guardian.full_name }} ({{ message.guardian.phone }})<br><strong>For:</strong> {{ message.digest_date|date:"j M Y" }}<br><strong>Why it is unclear:</strong> {{ message.last_error|default:"-" }}</p>
+    <blockquote class="border-left pl-3">{{ message.rendered_text }}</blockquote>
+    <form method="post">{% csrf_token %}
+      <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="confirm" value="yes" id="confirm"><label class="form-check-label" for="confirm">I understand the parent may receive this message twice.</label></div>
+      <button class="btn btn-warning" type="submit">Send again</button> <a class="btn btn-outline-secondary" href="{% url 'messaging_report' %}?date={{ message.digest_date|date:'Y-m-d' }}">Cancel</a>
+    </form>{% endif %}
+  </div></div>
+</div></section>
+{% endblock content %}

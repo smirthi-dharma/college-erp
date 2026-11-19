@@ -128,15 +128,13 @@ class SensitiveDataTests(AuditTestCase):
             user.set_password('A-brand-new-password-9')  # pragma: allowlist secret
             user.first_name = 'Changed-Name'
             user.address = '12 Secret Street'
-            user.fcm_token = 'device-token-xyz'
             user.save()
         (entry,) = self.new(model_label='main_app.CustomUser', action='update')
         self.assertEqual(entry.changes, {'password': ['[redacted]', '[redacted]'],
                                          'first_name': ['[personal data]', '[personal data]'],
-                                         'address': ['[personal data]', '[personal data]'],
-                                         'fcm_token': ['[redacted]', '[redacted]']})
+                                         'address': ['[personal data]', '[personal data]']})
         dump = json.dumps([e.changes for e in self.new()]) + ''.join(e.object_repr for e in self.new())
-        for secret in ('pbkdf2', 'Changed-Name', 'Secret Street', 'device-token-xyz', 'Stu'):
+        for secret in ('pbkdf2', 'Changed-Name', 'Secret Street', 'Stu'):
             self.assertNotIn(secret, dump)
 
     def test_deleting_a_user_keeps_the_entry_but_no_personal_data(self):
@@ -208,12 +206,22 @@ class IsolationTests(AuditTestCase):
 
 class NoUnloggedWritesTests(AuditTestCase):
     def test_application_code_does_not_use_bulk_writes_that_skip_the_log(self):
+        """The only bulk insert is audit_trail/bulk.py (it writes the log itself); everything else uses save()/delete()."""
         import pathlib
         import re
-        root = pathlib.Path(__file__).resolve().parents[2] / 'main_app'
+        project = pathlib.Path(__file__).resolve().parents[2]
+        # (file, text) pairs that are deliberate: the nightly purge writes its own audit entry and records only
+        # bookkeeping on the settings row with update(), so a quiet night adds no "settings changed" entry.
+        allowed = {('messaging/retention.py', 'objects.filter(pk=settings.pk).update('),
+                   ('audit_trail/signals.py', 'QuerySet.update(')}  # the second is only the module docstring
         offenders = []
-        for path in root.glob('*.py'):
+        for path in project.rglob('*.py'):
+            relative = path.relative_to(project)
+            if (relative.parts[0] in ('.venv', 'node_modules') or 'tests' in relative.parts or 'migrations' in relative.parts
+                    or relative.as_posix() == 'audit_trail/bulk.py'):
+                continue
             text = path.read_text()
             for m in re.finditer(r'\.(bulk_create|bulk_update|raw)\(|objects\.[a-z_]+\([^)]*\)\.update\(|QuerySet\.update\(', text):
-                offenders.append((path.name, m.group(0)))
-        self.assertEqual(offenders, [], 'use save()/delete() so the change is audited')
+                if (relative.as_posix(), m.group(0)) not in allowed:
+                    offenders.append((relative.as_posix(), m.group(0)))
+        self.assertEqual(offenders, [], 'use save()/delete(), or audit_trail.bulk.bulk_create_audited()')

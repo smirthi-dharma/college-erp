@@ -34,7 +34,7 @@ Unlock a locked-out login: `python manage.py tenant_command axes_reset --schema=
 Production-like check: `DJANGO_DEBUG=0 DJANGO_SECRET_KEY=... DJANGO_ALLOWED_HOSTS=.example.com RECAPTCHA_SITE_KEY=x RECAPTCHA_SECRET_KEY=y python manage.py check --deploy --fail-level WARNING`
 
 Environment variables: `DATABASE_URL`, `DJANGO_SECRET_KEY` (always required, no default), `DJANGO_DEBUG` (default 0; set 1 locally),
-`DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `FCM_SERVER_KEY`,
+`DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`,
 `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `AUDIT_CLIENT_IP_HEADER` (only behind a proxy you control).
 With `DJANGO_DEBUG=0` run `collectstatic` first, set the reCAPTCHA keys, and list real hosts in `DJANGO_ALLOWED_HOSTS`.
 
@@ -42,7 +42,9 @@ With `DJANGO_DEBUG=0` run `collectstatic` first, set the reCAPTCHA keys, and lis
 ## WhatsApp digest (background jobs)
 Tests need nothing (tasks run inline, no network). To try it locally: `manage.py run_digest --ignore-time` runs a college's digest in the
 foreground with no Redis (it is in dry run until a college admin turns it on in the app). The full variable list and the Celery command are
-in `docs/WHATSAPP_DIGEST_ACCEPTANCE.md`. Generate `FIELD_ENCRYPTION_KEY` once and keep it: losing it makes stored college secrets unreadable.
+in `docs/WHATSAPP_DIGEST_ACCEPTANCE.md`. Generate `FIELD_ENCRYPTION_KEYS` once (`manage.py new_encryption_key`) and back it up as `docs/KEY_MANAGEMENT.md` says: losing every key makes stored college secrets unreadable.
+
+`manage.py purge_message_log --dry-run` shows what the nightly retention job would delete.
 
 ## Django admin (platform staff only)
 

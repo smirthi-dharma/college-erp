@@ -42,10 +42,23 @@ class CustomUserForm(FormSettings):
         if kwargs.get('instance'):
             instance = kwargs.get('instance').admin.__dict__
             self.fields['password'].required = False
+            self.fields['profile_pic'].required = False  # keep the current picture unless a new one is sent
             for field in CustomUserForm.Meta.fields:
                 self.fields[field].initial = instance.get(field)
             if self.instance.pk is not None:
                 self.fields['password'].widget.attrs['placeholder'] = "Fill this only if you wish to update password"
+
+    MAX_PICTURE_BYTES = 2 * 1024 * 1024
+    PICTURE_FORMATS = ('JPEG', 'PNG', 'WEBP')
+
+    def clean_profile_pic(self):
+        picture = self.cleaned_data.get('profile_pic')
+        if picture and hasattr(picture, 'image'):  # a new upload (an unchanged picture has no image attached)
+            if picture.size > self.MAX_PICTURE_BYTES:
+                raise forms.ValidationError("The picture must be smaller than 2 MB.")
+            if picture.image.format not in self.PICTURE_FORMATS:
+                raise forms.ValidationError("Use a JPEG, PNG or WebP picture.")
+        return picture
 
     def clean_password(self):
         # The inherited forms stored whatever the HoD typed ('1234'); apply the configured validators.
@@ -104,48 +117,12 @@ class StaffForm(CustomUserForm):
             ['employee_id', 'department']
 
 
-class LeaveReportStaffForm(FormSettings):
-    def __init__(self, *args, **kwargs):
-        super(LeaveReportStaffForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = LeaveReportStaff
-        fields = ['date', 'message']
-        widgets = {
-            'date': DateInput(attrs={'type': 'date'}),
-        }
 
 
-class FeedbackStaffForm(FormSettings):
-
-    def __init__(self, *args, **kwargs):
-        super(FeedbackStaffForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = FeedbackStaff
-        fields = ['feedback']
 
 
-class LeaveReportStudentForm(FormSettings):
-    def __init__(self, *args, **kwargs):
-        super(LeaveReportStudentForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = LeaveReportStudent
-        fields = ['date', 'message']
-        widgets = {
-            'date': DateInput(attrs={'type': 'date'}),
-        }
 
 
-class FeedbackStudentForm(FormSettings):
-
-    def __init__(self, *args, **kwargs):
-        super(FeedbackStudentForm, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = FeedbackStudent
-        fields = ['feedback']
 
 
 class StudentEditForm(CustomUserForm):

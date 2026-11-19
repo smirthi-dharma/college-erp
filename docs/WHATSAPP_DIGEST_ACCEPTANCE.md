@@ -2,7 +2,7 @@
 
 Status: **APPROVED and BUILT** (branch `feat/whatsapp-digest`), with my recommended answers to Q1-Q8: Celery + Redis (Q1),
 primary guardian only (Q2), one platform number with per-college identifiers (Q3), child name + period + subject (Q4),
-opt-out by reply (Q5), minimal consent screen included (Q6), message log kept 12 months **(retention job NOT built yet)** (Q7),
+opt-out by reply (Q5), minimal consent screen included (Q6), message log kept 12 months (Q7; retention job built 2026-11-11, see below),
 Tamil wording is a DRAFT until someone checks it (Q8). Tests: `messaging/tests/` (check numbers are in the test names; every
 check 1-25 has at least one test; check 26 is the manual run below and is NOT done).
 Verified by mutation: removing the consent guard, the signature check or the double-send guard each fails tests.
@@ -11,7 +11,7 @@ Verified by mutation: removing the consent guard, the signature check or the dou
 
 ## How to run it
 - Needs env vars (never in git): `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`,
-  `FIELD_ENCRYPTION_KEY` (generate: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`), and `REDIS_URL`
+  `FIELD_ENCRYPTION_KEYS` (comma-separated, newest first; generate with `manage.py new_encryption_key`; rotation and backup in `docs/KEY_MANAGEMENT.md`), and `REDIS_URL`
   for the background worker.
 - Worker + scheduler: `celery -A college_management_system worker -B -l info`. Without Redis: `manage.py run_digest [--schema demo] [--ignore-time]`
   (also fine from cron: a day is never sent twice).
@@ -20,7 +20,7 @@ Verified by mutation: removing the consent guard, the signature check or the dou
 - Platform staff set the per-message rate in `/platform-admin/` (UsageRate); with no rate the cost shows 0.
 
 ## Not built / known gaps
-Message-log retention job (Q7); a per-message manual re-send for `unknown` messages; Meta's real prices and rules not checked against
+Meta's real prices and rules not checked against
 current documentation (the category defaults to utility and is corrected from Meta's webhook when it reports pricing); the webhook
 scans every college for a STOP reply (fine for a few colleges, needs an index table at scale); the Redis service, worker and beat are
 not yet in the Coolify setup; Tamil wording unreviewed.
@@ -171,3 +171,25 @@ corrections made after the send time.
 - Q7. **How long to keep the message log** (it holds child names). Recommend 12 months, configurable, and deleted with the
   student's data when a DPDP deletion is processed.
 - Q8. **Tamil text.** Who will check the Tamil template wording before it goes to Meta (a faculty member)?
+
+## Retention and resend (added 2026-11-11, branch `feat/retention-resend`)
+- **Retention.** Message rows (they hold child names) older than the college's `retention_months` (default 12, allowed 1-60, set on the
+  settings page) are deleted every night at 03:30 IST by `messaging.tasks.purge_old_messages` (Celery beat), or by hand with
+  `manage.py purge_message_log [--schema X] [--dry-run]`. A message exactly 12 months old is kept; delivery events go with their
+  message; a run row goes when it has no messages left. Guardians, consent records and the audit log are never touched. A purge
+  that deleted something writes one audit entry (count and cutoff date, no names). The settings page shows when it last ran.
+- **Resend.** The daily report shows "Send again..." on `unknown` (unclear) live messages. It opens a page that warns the parent
+  may receive the message twice and needs a ticked box. Only the college admin; only `unknown` messages that never got a
+  WhatsApp id; at most 3 times; only for messages of the last 7 days. The message goes back through the normal sender, so consent
+  and the on/off switch are re-checked. Each resend is audited with who did it and counted on the row. A double click sends once.
+
+## Consent evidence (added 2026-11-11, branch `feat/consent-evidence`)
+Every consent decision is now a `main_app.ConsentRecord`: who recorded it (id, e-mail, role, copied), when, how (paper form,
+verbal, parent self-service, or the system for a WhatsApp STOP), a note, and an optional scan of the signed form. Records are
+append-only (a withdrawal is a new row); `Guardian.whatsapp_consent` is only the current answer, changed only through
+`main_app.consent.record_consent`. Verbal consent needs a note. The college admin's screen offers paper form and verbal only;
+"parent self-service" is reserved for the future parent portal so staff cannot claim it. Scans: PDF, PNG or JPEG, up to 5 MB,
+magic bytes checked, stored under a random name in the college's own media folder, and downloadable only by the college admin
+through a view (attachment, no-store), never from a public media URL. Guardians whose consent predates this show
+"No evidence on file". Known gaps: a scan is not virus-scanned; a deleted guardian's records are deleted with them (the DPDP
+erasure design must decide what proof to keep).

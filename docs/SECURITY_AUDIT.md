@@ -53,14 +53,11 @@ no entry; a failure to log stops the change). Design choices:
 2. **Old secrets** (Gmail app password, `SECRET_KEY`, reCAPTCHA and Firebase keys) were in the upstream history. The private
    repository starts from a fresh single commit, so they are not in it. They belong to the upstream author; treat them as public.
 3. ~~Library module~~ **Removed**: URLs, menus, views, forms, templates and (migration 0004) the Book, IssuedBook and Library tables.
-4. **Uploaded-file serving** is untested: files are stored per college, but how a college's photos are served
-   (and kept private) is not built. The development `static()` route serves `MEDIA_ROOT` without authentication.
-5. **Firebase web config** now comes from `FIREBASE_WEB_CONFIG` (your own project); the upstream project's config was removed
-   from the service worker and three templates, and the service worker returns 404 until configured.
-   The legacy FCM endpoint used by `notifications.py` has been retired by Google; move to the HTTP v1 API.
+4. ~~**Uploaded-file serving**~~ **Done** (2026-11-19): profile pictures are served only by `/photo/<user id>/` (`main_app/photos.py`), which checks the role and the college: own picture; the college admin everyone; a teacher the students actively enrolled in their classes; a student nobody else. Anything else answers 404 so ids cannot be probed. The public `/media/` route is gone (it was only ever on in DEBUG, so in production no picture showed at all). Only JPEG/PNG/WebP up to 2 MB are accepted; only those types are ever sent, with `private` caching and `nosniff`. Pictures are stored as a storage name (migration 0016 converts old URLs). The consent-form scans were already private.
+5. ~~**Firebase web config** and the legacy FCM push~~ **Removed** (2026-11-12): push notifications, in-app notifications, leave and feedback are gone from the code and the database (migration 0015). WhatsApp covers parent alerts for the pilot.
 6. **Password-reset flow** (`/accounts/password_reset/`) was not tested for per-college isolation, and the
    email settings still point at SMTP via environment variables that are not set.
-7. **No Content-Security-Policy header**; the templates use inline scripts. Plan a CSP when the React front end replaces them.
+7. **Content-Security-Policy**: sent on every response (`CSP_DIRECTIVES` in settings; `CSP_REPORT_ONLY=1` makes it report-only on staging). It limits scripts, styles, fonts and frames to our own origin plus jsDelivr, Google Fonts and reCAPTCHA, and blocks plugins, framing, `<base>` and foreign form targets. **Still open:** `script-src` and `style-src` keep `'unsafe-inline'` because the templates have inline `<script>` blocks and `onclick`/`onerror` attributes (20 templates). Moving them into files, then switching to a per-request nonce, is the follow-up that makes the policy stop injected inline script too. A test fails if a template loads from a host the policy does not list.
 8. HoD can read every record in their own college by design. Finer rules (HoD of one department only)
    arrive with the departments model.
 9. Not covered by tests yet: Celery jobs, caches and backups (they do not exist yet).
