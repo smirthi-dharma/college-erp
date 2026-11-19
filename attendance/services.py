@@ -171,14 +171,16 @@ def evaluate(attended, held, rule, condoned=False):
     return percent, status, can_miss
 
 
-def summarize(students):
-    """Summaries for many students with a constant number of queries."""
+def summarize(students, term=None):
+    """Summaries for many students with a constant number of queries. With `term`, only that term's classes count."""
     students = list(students)
     ids = [s.pk for s in students]
     sections = {s.pk: s for s in Student.objects.filter(pk__in=ids).select_related('section__batch')}
     rules = {r.regulation_id: r for r in AttendanceRule.objects.all()}
-    rows = (AttendanceReport.objects.filter(student_id__in=ids)
-            .values('student_id', 'attendance__offering_id')
+    reports = AttendanceReport.objects.filter(student_id__in=ids)
+    if term is not None:
+        reports = reports.filter(attendance__offering__term=term)
+    rows = (reports.values('student_id', 'attendance__offering_id')
             .annotate(held=Count('id'), present=Count('id', filter=Q(status=PRESENT)),
                       on_duty=Count('id', filter=Q(status=ON_DUTY)),
                       pending=Count('id', filter=Q(status=ON_DUTY, needs_review=True))))
@@ -217,15 +219,17 @@ def summarize(students):
     return result
 
 
-def shortage_students(section=None, offering=None, statuses=(SHORTAGE, WARNING)):
-    """Rows (student, entry) whose status is in `statuses`. The single source for reports and the later WhatsApp digest."""
+def shortage_students(section=None, offering=None, statuses=(SHORTAGE, WARNING), term=None):
+    """Rows (student, entry) whose status is in `statuses`. The single source for reports, the dashboard and the digest.
+
+    With `term`, only that term's classes are counted (the principal dashboard works per term)."""
     students = Student.objects.select_related('admin', 'section__batch__programme')
     if section is not None:
         students = students.filter(section=section)
     if offering is not None:
         ids = Enrolment.objects.filter(offering=offering, status=Enrolment.ACTIVE).values('student_id')
         students = students.filter(pk__in=ids)
-    summaries = summarize(students)
+    summaries = summarize(students, term=term)
     rows = []
     for student in students:
         for entry in summaries[student.pk].entries:

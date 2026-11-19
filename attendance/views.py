@@ -11,7 +11,7 @@ from openpyxl import Workbook
 
 from academics.models import Regulation, Section, SubjectOffering
 from bulk_import.services import safe_cell
-from main_app.access import COLLEGE_ADMIN, STAFF, STUDENT, role_required
+from main_app.access import COLLEGE_ADMIN, MANAGEMENT, STAFF, STUDENT, role_required
 from main_app.models import Attendance, AttendanceReport, Student
 
 from . import services
@@ -20,6 +20,7 @@ from .models import AttendanceRule, Condonation, SubstituteAssignment, rule_for
 
 staff_or_admin = role_required(STAFF, COLLEGE_ADMIN, strict=True)
 admin_only = role_required(COLLEGE_ADMIN, strict=True)
+admin_or_management = role_required(COLLEGE_ADMIN, MANAGEMENT, strict=True)  # read-only pages: Management may look
 XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
@@ -126,12 +127,14 @@ def attendance_summary(request, offering_id):
 
 # --- reports ----------------------------------------------------------------------------------------------------------
 
-@admin_only
+@admin_or_management
 def shortage_report(request):
+    from academics.models import AcademicTerm
+    term = AcademicTerm.objects.filter(pk=request.GET.get('term')).first() if request.GET.get('term') else None
     section = Section.objects.filter(pk=request.GET.get('section')).first() if request.GET.get('section') else None
     offering = SubjectOffering.objects.filter(pk=request.GET.get('offering')).first() if request.GET.get('offering') else None
     statuses = (services.SHORTAGE,) if request.GET.get('only') == 'shortage' else (services.SHORTAGE, services.WARNING, services.CONDONED)
-    rows = services.shortage_students(section=section, offering=offering, statuses=statuses)
+    rows = services.shortage_students(section=section, offering=offering, statuses=statuses, term=term)
     if request.GET.get('format') == 'xlsx':
         wb = Workbook()
         ws = wb.active
@@ -148,7 +151,7 @@ def shortage_report(request):
         return response
     return render(request, 'attendance/shortage.html', {
         'rows': rows, 'sections': Section.objects.all(), 'offerings': SubjectOffering.objects.select_related('subject', 'section'),
-        'section': section, 'offering': offering, 'page_title': 'Attendance shortage'})
+        'section': section, 'offering': offering, 'term': term, 'page_title': 'Attendance shortage'})
 
 
 @role_required(STUDENT, strict=True)

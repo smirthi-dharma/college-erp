@@ -74,6 +74,7 @@ TENANT_APPS = [
     'attendance.apps.AttendanceConfig',
     'student360.apps.Student360Config',
     'messaging.apps.MessagingConfig',
+    'dashboard.apps.DashboardConfig',  # no models: the principal dashboard and Management users
     'audit_trail',
     'axes',
     'django_otp',

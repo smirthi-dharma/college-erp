@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect, render, reverse
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from .access import ALL_ROLES, COLLEGE_ADMIN, home_url_for, offering_for_user, public_view, role_required
@@ -71,12 +71,7 @@ def doLogin(request, **kwargs):
                 # Set session to expire when browser closes
                 request.session.set_expiry(0)
             
-            if user.user_type == '1':
-                return redirect(reverse("admin_home"))
-            elif user.user_type == '2':
-                return redirect(reverse("staff_home"))
-            else:
-                return redirect(reverse("student_home"))
+            return redirect(home_url_for(user))  # every role with pages has a home (checked above)
         else:
             # authenticate() has already sent user_login_failed: recorded in the audit log (email only).
             messages.error(request, "Invalid details")

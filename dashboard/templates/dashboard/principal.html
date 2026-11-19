@@ -1,0 +1,109 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+{% block custom_css %}
+<style>
+  .pd-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .pd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .pd-tile { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 6px rgba(40, 50, 90, .12); }
+  .pd-tile h2 { font-size: 1rem; margin: 0 0 8px; color: #4a5163; text-transform: uppercase; letter-spacing: .03em; }
+  .pd-big { font-size: 2.2rem; font-weight: 700; line-height: 1.1; }
+  .pd-muted { color: #6b7385; }
+  .pd-note { font-size: .82rem; color: #6b7385; margin-top: 8px; }
+  .pd-tile table { width: 100%; font-size: .92rem; }
+  .pd-tile td, .pd-tile th { padding: 3px 4px; }
+  .pd-danger { color: #c0392b; } .pd-warn { color: #b9770e; } .pd-ok { color: #1e8449; }
+  .pd-fees { border: 2px dashed #c9cde0; box-shadow: none; text-align: center; }
+  @media (max-width: 576px) { .pd-grid { grid-template-columns: 1fr; } .pd-big { font-size: 1.9rem; } }
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    .erpnext-sidebar, .erpnext-navbar, .no-print, .page-header .breadcrumb, #pwa-install-box { display: none !important; }
+    .erpnext-main { margin: 0 !important; padding: 0 !important; }
+    body { background: #fff !important; }
+    .pd-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pd-tile { box-shadow: none; border: 1px solid #bbb; break-inside: avoid; }
+    details { display: none; }
+  }
+</style>
+{% endblock custom_css %}
+{% block content %}
+<section class="content"><div class="container-fluid">
+  <form method="get" class="pd-bar no-print" aria-label="Term">
+    <label for="term" class="mb-0"><strong>Term</strong></label>
+    <select name="term" id="term" class="form-control" style="width:auto" onchange="this.form.submit()">
+      {% for t in terms %}<option value="{{ t.pk }}" {% if term and t.pk == term.pk %}selected{% endif %}>{{ t.name }}</option>{% empty %}<option>No term yet</option>{% endfor %}
+    </select>
+    <noscript><button class="btn btn-secondary">Show</button></noscript>
+    <span class="pd-muted">as of {{ as_of|date:"d M Y, H:i" }}</span>
+    <span style="flex:1"></span>
+    <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Print</button>
+    {% if term %}<a class="btn btn-primary" href="{% url 'principal_export' %}?term={{ term.pk }}">Export to Excel</a>{% endif %}
+  </form>
+  <p class="pd-muted d-none d-print-block">{{ term|default:"No term yet" }} &middot; as of {{ as_of|date:"d M Y, H:i" }}</p>
+
+  {% if not term %}
+    <div class="alert alert-info">Nothing to show yet. Add a term and its subjects under Institution structure, then take attendance; the tiles fill in by themselves.</div>
+  {% elif not is_current %}
+    <div class="alert alert-secondary no-print">You are looking at {{ term }}, which is not the current term. "Today" below still means {{ today|date:"d M Y" }}.</div>
+  {% endif %}
+
+  <div class="pd-grid">
+    <div class="pd-tile" id="tile-sections">
+      <h2>Sections not marked today</h2>
+      {% if sections.total == 0 %}
+        <div class="pd-big pd-muted">0</div><div class="pd-muted">No section has a subject in this term yet.</div>
+      {% elif sections.unmarked %}
+        <div class="pd-big pd-warn">{{ sections.unmarked|length }} <span style="font-size:1rem" class="pd-muted">of {{ sections.total }} sections</span></div>
+        <table><tbody>{% for row in sections.unmarked %}<tr><td>{{ row.section }}</td><td class="pd-muted">{{ row.teachers|join:", "|default:"-" }}</td></tr>{% endfor %}</tbody></table>
+      {% else %}
+        <div class="pd-big pd-ok">0 <span style="font-size:1rem" class="pd-muted">of {{ sections.total }} sections</span></div><div class="pd-muted">Every section has attendance recorded today.</div>
+      {% endif %}
+      <div class="pd-note">With no timetable the app cannot know about holidays: on a day with no classes every section shows here.</div>
+      <details><summary class="pd-note">How this is calculated</summary><p class="pd-note">Sections that have at least one subject in the chosen term, and no class recorded today for any of those subjects. The teachers listed teach those subjects.</p></details>
+    </div>
+
+    <div class="pd-tile" id="tile-attendance">
+      <h2>Attendance today</h2>
+      {% if attendance.classes %}
+        <div class="pd-big">{{ attendance.present_percent|default_if_none:"-" }}%</div>
+        <div class="pd-muted">present across {{ attendance.classes }} class{{ attendance.classes|pluralize:"es" }} ({{ attendance.marks }} marks)</div>
+      {% else %}
+        <div class="pd-big pd-muted">-</div><div class="pd-muted">No attendance recorded today.</div>
+      {% endif %}
+      <details><summary class="pd-note">How this is calculated</summary><p class="pd-note">Present and on-duty marks divided by all marks, for classes recorded today in the chosen term's subjects.</p></details>
+    </div>
+
+    <div class="pd-tile" id="tile-shortage">
+      <h2>Attendance shortage</h2>
+      <div class="pd-big pd-danger">{{ shortage.shortage }} <span style="font-size:1rem" class="pd-muted">in shortage</span></div>
+      <table><tbody>
+        <tr><td>On warning</td><td class="pd-warn"><strong>{{ shortage.warning }}</strong></td></tr>
+        <tr><td>Condoned</td><td><strong>{{ shortage.condoned }}</strong></td></tr>
+        <tr><td>OK</td><td class="pd-ok"><strong>{{ shortage.ok }}</strong></td></tr>
+        <tr><td>No classes yet</td><td class="pd-muted"><strong>{{ shortage.no_data }}</strong></td></tr>
+        <tr><td class="pd-muted">All students</td><td class="pd-muted">{{ shortage.total }}</td></tr>
+      </tbody></table>
+      {% if term %}<a class="no-print" href="{% url 'shortage_report' %}?term={{ term.pk }}">Open the shortage report</a>{% endif %}
+      <details><summary class="pd-note">How this is calculated</summary><p class="pd-note">Each student is counted once by their worst status in the chosen term, using the attendance rule of their regulation (required %, warning %, condonation, on-duty). The same rule and numbers as the shortage report.</p></details>
+    </div>
+
+    <div class="pd-tile" id="tile-consent">
+      <h2>Parent WhatsApp consent</h2>
+      {% if consent.total %}
+        <div class="pd-big">{{ consent.yes_percent }}% <span style="font-size:1rem" class="pd-muted">said yes</span></div>
+        <div class="pd-muted">{{ consent.yes }} yes, {{ consent.no }} no, {{ consent.unknown }} not asked ({{ consent.total }} guardians)</div>
+        <table><thead><tr><th>Programme</th><th>Yes</th><th>No</th><th>Not asked</th></tr></thead><tbody>
+          {% for row in consent.programmes %}<tr><td>{{ row.name }}</td><td>{{ row.yes }}</td><td>{{ row.no }}</td><td>{{ row.unknown }}</td></tr>{% endfor %}
+        </tbody></table>
+      {% else %}
+        <div class="pd-big pd-muted">-</div><div class="pd-muted">No guardians on file yet.</div>
+      {% endif %}
+      <details><summary class="pd-note">How this is calculated</summary><p class="pd-note">Each guardian is counted once in the total, and once in every programme where they have a child. Alerts are sent only to guardians who said yes.</p></details>
+    </div>
+
+    <div class="pd-tile pd-fees" id="tile-fees">
+      <h2>Fees</h2>
+      <div class="pd-big pd-muted">-</div><div class="pd-muted">Not available yet.</div>
+    </div>
+  </div>
+</div></section>
+{% endblock content %}
