@@ -28,8 +28,8 @@ Leave, feedback, in-app notifications, Firebase push and the dead `erpnext_*` te
 | Daily off-server backups, monthly restore test | Absent. |
 | DPDP: consent records, export/deletion, India residency | Absent. |
 | University rules as configuration | Not met (fixed `test`/`exam` fields). |
-| DRF, Celery, Redis | Absent. |
-| React + Tailwind frontend, Capacitor Android app | Absent (server-rendered templates). |
+| Celery, Redis | Built (WhatsApp digest, message-log purge); staging compose stack is in PR #13. No DRF by decision. |
+| Frontend and Android app | Decided 2026-11-19: server-rendered Django + PWA (manifest, service worker, installable); Play Store later via a Trusted Web Activity. React, DRF and Capacitor are not planned for the pilot. The PWA files are not built yet. |
 
 ## Known bugs (fix when touching the area)
 

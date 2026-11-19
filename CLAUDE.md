@@ -1,4 +1,4 @@
-# College ERP — Project Context for Claude Code
+# College ERP — Project Context
 
 ## What we're building
 A multi-tenant cloud ERP for Indian colleges and universities, sold as a per-student annual subscription.
@@ -13,14 +13,13 @@ Full proposal (modules, roadmap, pricing, risks): https://claude.ai/artifact/8L4
 - Treat the base as a scaffold: add tests and refactor each module as we touch it.
 
 ## Tech stack
-- Backend: Django + Django REST Framework, Celery + Redis for background jobs
+- Backend: Django (server-rendered templates, no REST API for the pilot), Celery + Redis for background jobs
 - Multi-tenancy: django-tenants, schema per college, subdomain per college (college.ourerp.in)
 - Database: Supabase Pro (Mumbai region), used as plain PostgreSQL
 - File storage: Supabase Storage; nightly DB dump copied to Cloudflare R2
-- Frontend: React + Tailwind (web app), same codebase wrapped with Capacitor for the Android app
+- Frontend (decided 2026-11-19): the pilot ships as server-rendered Django templates plus a PWA (web app manifest and service worker, installable, works on a cheap Android phone). The Play Store comes later through a Trusted Web Activity wrapping the same site. No React, no Tailwind build, no Django REST Framework, no Capacitor for the pilot. Revisit only if a customer needs something the PWA cannot do. The manifest and service worker are NOT built yet.
 - Hosting: Hostinger VPS (Mumbai) running the app via Coolify; Cloudflare free plan for DNS/HTTPS
-- Integrations: Razorpay (fees settle to the college's own account), WhatsApp Cloud API (Meta, direct),
-  Firebase Cloud Messaging for push notifications
+- Integrations: Razorpay (fees settle to the college's own account), WhatsApp Cloud API (Meta, direct). No push notifications for the pilot: WhatsApp covers parent alerts (Firebase push was removed 2026-11-12).
 - Developer machine: Windows + PowerShell
 
 ## Pilot MVP scope (Phase 1, target Jan–Apr 2027)
@@ -55,9 +54,17 @@ Super admin, Management/Principal, IQAC coordinator, HoD, Faculty, Office staff
 ## Current status
 Demo data: `manage.py seed_demo [--schema demo]` (after `create_demo_college`) adds a programme, section, 2 subjects, 10 students with 9 guardians (mixed WhatsApp consent, two siblings), enrolments and 10 days of attendance; idempotent, demo schemas only (name must start with `demo`), never overwrites edits.
 
-Last updated: 2026-11-11 (session 6, hardening week: five PRs open, see below; 378 tests on main, about 33 s)
+Last updated: 2026-11-19 (session 7, pre-sale cleanup: PRs #24, #25, #26, #27 open and stacked, merge in that order; 527 tests on the top of the stack, about 42 s; main itself has 433 tests until they merge)
 
-### Hardening week (2026-11-11), one PR each, none merged yet when this was written
+### Pre-sale cleanup (2026-11-19), stacked PRs, merge in order
+- #24 `chore/remove-legacy`: leave, feedback, in-app notifications, Firebase push, the dead `erpnext_*` and old home templates, `preview.html`, `upload.html` are gone (migration 0015 drops six tables and `fcm_token`). Tests keep the old URLs at 404 for every role and every menu free of links to them.
+- #25 `test/legacy-view-coverage`: tests for the admin, teacher, student and login pages: `hod_views` 34% to 98%, `staff_views` and `student_views` 100%. Two real bugs found and fixed (editing a person required re-uploading their picture; deleting a teacher who still teaches crashed).
+- #26 `perf/query-counts`: attendance submit for 150 students 644 to 52 queries (about 20 of the code's own, the same for any class size) through `audit_trail.bulk.bulk_create_audited`, which still writes every audit entry; admin home page no longer loops per student; query-count tests; the no-bulk-writes scan now covers the whole project.
+- #27 `feat/private-photos-csp`: pictures only through `/photo/<id>/` (role- and college-checked, 404 otherwise, JPEG/PNG/WebP up to 2 MB), no public `/media/`; Content-Security-Policy and Permissions-Policy on every response (`CSP_REPORT_ONLY=1` for staging). CSP still allows `'unsafe-inline'` scripts until the 20 templates with inline scripts are moved to files and a nonce is used. Checked in a real browser (DOM and console, not screenshots).
+- Still to do from this round: nightly pg_dump to Cloudflare R2 with a restore script and monthly restore test, Sentry, `/healthz` (prepared, not live); principal dashboard acceptance checks for approval; the PWA manifest and service worker.
+- Never commit `.coverage` (now ignored). No tool or assistant attribution in commits, PR text, code or docs.
+
+### Hardening week (2026-11-11), merged on 2026-11-11 except the staging branch
 - `feat/consent-evidence`: every consent decision is an append-only `ConsentRecord` (who, when, how: paper form / verbal / parent self-service / system STOP; optional scan of the signed form, PDF/PNG/JPEG up to 5 MB, private download for the college admin only). Staff cannot claim "parent self-service".
 - `feat/key-rotation`: `FIELD_ENCRYPTION_KEYS` (comma list, newest first, MultiFernet), `rotate_encryption_keys [--check]`, `new_encryption_key`, `docs/KEY_MANAGEMENT.md` (includes how to back the key up).
 - `chore/staging-workers` (stacked on PR #13, merge #13 first): `docker-compose.yml` with web, Celery worker, Celery beat (exactly one), private Redis; only web migrates; static tests guard the files; `docs/STAGING_SETUP.md` updated. Never built or run (no Docker here, no staging yet).
