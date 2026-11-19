@@ -128,15 +128,13 @@ class SensitiveDataTests(AuditTestCase):
             user.set_password('A-brand-new-password-9')  # pragma: allowlist secret
             user.first_name = 'Changed-Name'
             user.address = '12 Secret Street'
-            user.fcm_token = 'device-token-xyz'
             user.save()
         (entry,) = self.new(model_label='main_app.CustomUser', action='update')
         self.assertEqual(entry.changes, {'password': ['[redacted]', '[redacted]'],
                                          'first_name': ['[personal data]', '[personal data]'],
-                                         'address': ['[personal data]', '[personal data]'],
-                                         'fcm_token': ['[redacted]', '[redacted]']})
+                                         'address': ['[personal data]', '[personal data]']})
         dump = json.dumps([e.changes for e in self.new()]) + ''.join(e.object_repr for e in self.new())
-        for secret in ('pbkdf2', 'Changed-Name', 'Secret Street', 'device-token-xyz', 'Stu'):
+        for secret in ('pbkdf2', 'Changed-Name', 'Secret Street', 'Stu'):
             self.assertNotIn(secret, dump)
 
     def test_deleting_a_user_keeps_the_entry_but_no_personal_data(self):

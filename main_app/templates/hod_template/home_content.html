@@ -95,7 +95,7 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <i class="fas fa-calendar-check me-2"></i>
-                        Student Attendance & Leave Overview
+                        Student Attendance Overview
                     </h3>
                 </div>
                 <div class="card-body">
@@ -265,7 +265,7 @@
             }
         });
 
-        // Student Attendance & Leave Overview
+        // Student Attendance Overview
         const barCtx2 = document.getElementById('barChart2').getContext('2d');
         new Chart(barCtx2, {
             type: 'bar',
@@ -278,7 +278,7 @@
                     borderRadius: 4,
                     borderSkipped: false
                 }, {
-                    label: 'Absent/Leave',
+                    label: 'Absent',
                     data: {{ student_attendance_leave_list }},
                     backgroundColor: colors.danger,
                     borderRadius: 4,

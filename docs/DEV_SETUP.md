@@ -34,7 +34,7 @@ Unlock a locked-out login: `python manage.py tenant_command axes_reset --schema=
 Production-like check: `DJANGO_DEBUG=0 DJANGO_SECRET_KEY=... DJANGO_ALLOWED_HOSTS=.example.com RECAPTCHA_SITE_KEY=x RECAPTCHA_SECRET_KEY=y python manage.py check --deploy --fail-level WARNING`
 
 Environment variables: `DATABASE_URL`, `DJANGO_SECRET_KEY` (always required, no default), `DJANGO_DEBUG` (default 0; set 1 locally),
-`DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `FCM_SERVER_KEY`,
+`DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`,
 `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `AUDIT_CLIENT_IP_HEADER` (only behind a proxy you control).
 With `DJANGO_DEBUG=0` run `collectstatic` first, set the reCAPTCHA keys, and list real hosts in `DJANGO_ALLOWED_HOSTS`.
 

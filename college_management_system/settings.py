@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
-import json
 import os
 import sys
 from datetime import timedelta
@@ -124,7 +123,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'main_app.context_processors.firebase',
             ],
         },
     },
@@ -222,12 +220,6 @@ STORAGES = {
 # development (DEBUG=1). With DEBUG=0 and no keys, logins are refused.
 RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '')
 RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '')
-
-# Push notifications: leave FCM_SERVER_KEY unset to disable sending.
-FCM_SERVER_KEY = os.environ.get('FCM_SERVER_KEY', '')
-FCM_URL = os.environ.get('FCM_URL', 'https://fcm.googleapis.com/fcm/send')
-# Your own Firebase project's web config as JSON (public client settings, but never another project's).
-FIREBASE_WEB_CONFIG = json.loads(os.environ.get('FIREBASE_WEB_CONFIG') or '{}')
 
 # Uploaded files go to MEDIA_ROOT/<college schema>/...
 MULTITENANT_RELATIVE_MEDIA_ROOT = '%s'
