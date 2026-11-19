@@ -12,6 +12,8 @@
                     Administrator
                 {% elif user.user_type == '2' %}
                     Staff Member
+                {% elif user.user_type == '5' %}
+                    Management / Principal
                 {% else %}
                     Student
                 {% endif %}
@@ -112,6 +114,14 @@
         <h6 class="nav-section-title">Reports & Analytics</h6>
         
         <div class="nav-item">
+            {% url 'principal_dashboard' as principal_dashboard %}
+            <a href="{{ principal_dashboard }}" class="nav-link {% if principal_dashboard == request.path %}active{% endif %}"><i class="nav-icon fas fa-chart-pie"></i><span class="nav-text">Principal dashboard</span></a>
+        </div>
+        <div class="nav-item">
+            {% url 'management_users' as management_users %}
+            <a href="{{ management_users }}" class="nav-link {% if 'management/users' in request.path %}active{% endif %}"><i class="nav-icon fas fa-user-tie"></i><span class="nav-text">Principal users</span></a>
+        </div>
+        <div class="nav-item">
             {% url 'shortage_report' as shortage_report %}
             <a href="{{ shortage_report }}" class="nav-link {% if shortage_report == request.path %}active{% endif %}"><i class="nav-icon fas fa-exclamation-triangle"></i><span class="nav-text">Attendance shortage</span></a>
         </div>
@@ -192,6 +202,21 @@
                 <i class="nav-icon fas fa-check-circle"></i>
                 <span class="nav-text">Take Attendance</span>
             </a>
+        </div>
+    {% elif user.user_type == '5' %}
+        <h6 class="nav-section-title">Main</h6>
+        <div class="nav-item">
+            {% url 'principal_dashboard' as principal_dashboard %}
+            <a href="{{ principal_dashboard }}" class="nav-link {% if principal_dashboard == request.path %}active{% endif %}"><i class="nav-icon fas fa-chart-pie"></i><span class="nav-text">Principal dashboard</span></a>
+        </div>
+        <h6 class="nav-section-title">Students and reports</h6>
+        <div class="nav-item">
+            {% url 'student_list' as student_list %}
+            <a href="{{ student_list }}" class="nav-link {% if '/students/' in request.path %}active{% endif %}"><i class="nav-icon fas fa-id-card"></i><span class="nav-text">Student 360</span></a>
+        </div>
+        <div class="nav-item">
+            {% url 'shortage_report' as shortage_report %}
+            <a href="{{ shortage_report }}" class="nav-link {% if shortage_report == request.path %}active{% endif %}"><i class="nav-icon fas fa-exclamation-triangle"></i><span class="nav-text">Attendance shortage</span></a>
         </div>
     {% else %}
         <!-- Student Navigation -->

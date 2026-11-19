@@ -1,7 +1,7 @@
 # Pilot item 8: principal dashboard. Acceptance checks
 
-**Status: DRAFT 2, answers incorporated 2026-11-19. Nothing is built. Waiting for your "go" to start building.**
-The five tiles are a draft until a real principal confirms them (see "Open points").
+**Status: BUILT 2026-11-19 on branch `feat/principal-dashboard`** (you said go). The five tiles stay a draft until a real principal
+confirms them (see "Open points"). Each check below names the test that proves it; 13 and the by-eye parts are noted honestly.
 
 ## What it is
 
@@ -15,7 +15,7 @@ has. It is read-only. Fees are not built, so that tile says "Not available yet" 
 3. **Five tiles**: attendance today, shortage count, sections not marked, guardian consent coverage, fees placeholder.
 4. **Excel and a printable page**; no generated PDF file for the pilot.
 5. **One role, "Management / Principal", with many users**; the college admin creates, edits and deactivates them.
-6. The page shows the **current term by default**, with a **term picker** to look at an earlier or a later term.
+6. The page shows the **current term by default**, with a **term picker** to look at an earlier or a later term. (Built as: the choice is remembered for the current sign-in, per user, and forgotten at sign-out; not stored permanently.)
 
 ## Who sees it
 
@@ -93,3 +93,32 @@ says so in one line.
    view is logged (your answer 1). If a college prefers, a per-college setting could hide phone numbers from Management later.
 3. **The five tiles:** the order and the wording follow what a real principal says. If they ask for different tiles, this table
    changes before anything is built.
+
+## What was built, and how each check is proved (2026-11-19)
+
+| Check | Proved by |
+|---|---|
+| 1 read-only | `dashboard/tests/test_access.py` `ReadOnlyTests`: a walk of **every** URL of the application as Management, GET and POST, expects 403 for all but a short named list (`MAY_OPEN`), and the database is unchanged. A new page is closed to Management until it is added to the list on purpose. Mutation-checked. |
+| 2 other roles | `WhoElseTests`; the URL-policy test lists no new public page |
+| 3 tenant isolation | `OtherCollegeTests` (numbers) and the existing isolation tests |
+| 4 Student 360 | `Student360Tests`: full page like the college admin, read-only, every view in the access log with role "5" |
+| 5 users | `ManagementUsersTests`: add several, edit, deactivate (also ends an open session), audit entries, Management cannot manage users |
+| 6 golden example | `GoldenNumbersTests` (a college with exactly known figures) |
+| 7, 8, 10 reconciliation, rule, withdrawn | `ReconciliationTests` |
+| 9 sections not marked | `GoldenNumbersTests` |
+| 11 consent once | `GoldenNumbersTests` (a guardian with two children in one programme is counted once; mutation-checked) |
+| 12 as-of, how calculated | `TermPickerTests` |
+| 13 term picker | `TermPickerTests` (default, latest when none is current, per-user, bad id refused). Remembered for the sign-in only. |
+| 14 empty college | `EmptyCollegeTests` |
+| 15 speed | `SizeTests`: same query count at 5 and 405 students; 3,005 students render in about 0.1 s (limit 1 s) |
+| 16 nothing external | `LayoutTests` |
+| 17 phone | `LayoutTests` (order, one column rule) and by eye: at a 360 px viewport there is no sideways scroll, one column, tiles in order |
+| 18 print | `LayoutTests` (A4 print rules) and the rules read in real Chrome; **not yet printed on paper** |
+| 19 Excel | `ExportTests`: sheets, numbers, term, formula text neutralised, one audit entry per download with who and which term |
+| 20 done | CI; `docs/DEMO_SCRIPT.md` has the minute; CLAUDE.md updated |
+
+Decisions that were open, as built: **holidays** get the one-line note only (no switch); **parents' phone numbers** are visible to
+Management in Student 360 (every view logged); Management sees **its own picture only** (not other people's photos).
+
+Not built: a "no classes today" switch, a per-college hide-phone setting, HoD by department, a real principal's confirmation of the
+tiles, and fees (placeholder).

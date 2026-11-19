@@ -36,9 +36,11 @@ class CustomUser(AbstractUser):
     # Stored as strings; compare with these constants, never with bare 1/2/3.
     # "1" is the college-wide administrator (it was called HOD in the inherited code; the stored value is unchanged).
     # "4" (Head of department) has no pages yet: it is refused everywhere until the scoped role is built.
-    COLLEGE_ADMIN, STAFF, STUDENT, HEAD_OF_DEPARTMENT = "1", "2", "3", "4"
+    # "5" (Management / Principal) is read-only: the principal dashboard, Student 360 and the shortage report, nothing that
+    # adds, edits or deletes. The college admin creates these users (many are allowed).
+    COLLEGE_ADMIN, STAFF, STUDENT, HEAD_OF_DEPARTMENT, MANAGEMENT = "1", "2", "3", "4", "5"
     USER_TYPE = ((COLLEGE_ADMIN, "College admin"), (STAFF, "Staff"), (STUDENT, "Student"),
-                 (HEAD_OF_DEPARTMENT, "Head of department"))
+                 (HEAD_OF_DEPARTMENT, "Head of department"), (MANAGEMENT, "Management / Principal"))
     GENDER = [("M", "Male"), ("F", "Female")]
     
     

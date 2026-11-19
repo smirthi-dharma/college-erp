@@ -34,6 +34,7 @@ class AuditLog(models.Model):
         LOGOUT = 'logout', 'Logout'
         LOGIN_FAILED = 'login_failed', 'Login failed'
         LOCKED_OUT = 'locked_out', 'Locked out (too many failed logins)'
+        EXPORT = 'export', 'Data exported'
 
     timestamp = models.DateTimeField(default=timezone.now, db_index=True)
     action = models.CharField(max_length=16, choices=Action.choices, db_index=True)

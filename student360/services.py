@@ -11,12 +11,14 @@ from main_app.models import CustomUser, Guardian, Staff, Student, StudentGuardia
 
 from .models import StudentAccessLog
 
-ADMIN, STAFF_ROLE, STUDENT_ROLE = CustomUser.COLLEGE_ADMIN, CustomUser.STAFF, CustomUser.STUDENT
+ADMIN, STAFF_ROLE, STUDENT_ROLE, MANAGEMENT = (CustomUser.COLLEGE_ADMIN, CustomUser.STAFF, CustomUser.STUDENT,
+                                               CustomUser.MANAGEMENT)
+FULL_VIEW = (ADMIN, MANAGEMENT)  # the college admin and the (read-only) principal see the whole page
 
 
 def visible_students(user):
     """Students this user may open. A teacher's access follows ACTIVE enrolment in their own offerings."""
-    if user.user_type == ADMIN:
+    if user.user_type in FULL_VIEW:
         return Student.objects.all()
     if user.user_type == STAFF_ROLE:
         staff = Staff.objects.filter(admin=user).first()
@@ -58,9 +60,9 @@ def _alerts(viewer_role, student, summary, guardians):
         if e.pending_on_duty:
             alerts.append(('info', f'{e.pending_on_duty} on-duty mark(s) in {subject} awaiting college-admin review',
                            'on_duty'))
-    if viewer_role in (ADMIN, STAFF_ROLE) and student.section_id is None:
+    if viewer_role in (ADMIN, STAFF_ROLE, MANAGEMENT) and student.section_id is None:
         alerts.append(('warning', 'No section assigned', 'no_section'))
-    if viewer_role == ADMIN:
+    if viewer_role in FULL_VIEW:
         if not guardians:
             alerts.append(('warning', 'No guardian on file', 'no_guardian'))
         elif any(g.guardian.whatsapp_consent == Guardian.CONSENT_UNKNOWN for g in guardians):
@@ -101,12 +103,12 @@ def build(viewer, student):
         'summary': summary, 'overall': overall, 'held': held, 'attended': attended,
         'results': results, 'guardians': guardians,
         'alerts': _alerts(role, student, summary, guardians),
-        'show_private': role in (ADMIN, STUDENT_ROLE),  # date of birth, address, guardian phones
-        'show_changes': role == ADMIN,
+        'show_private': role in (ADMIN, MANAGEMENT, STUDENT_ROLE),  # date of birth, address, guardian phones
+        'show_changes': role in FULL_VIEW,
         'changes': [],
         'initials': ((student.admin.first_name[:1] + student.admin.last_name[:1]) or '?').upper(),
     }
-    if role == ADMIN:
+    if role in FULL_VIEW:
         ctx['changes'] = list(AuditLog.objects.filter(
             Q(model_label='main_app.Student', object_pk=str(student.pk))
             | Q(model_label='main_app.CustomUser', object_pk=str(student.admin_id)))[:20])

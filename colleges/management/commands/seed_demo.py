@@ -97,6 +97,7 @@ class Command(BaseCommand):
                    {'start_date': today - datetime.timedelta(days=35), 'end_date': today + datetime.timedelta(days=120)})
 
         user('admin@%s.in' % schema, CustomUser.COLLEGE_ADMIN, 'Demo', 'Admin')
+        user('principal@%s.in' % schema, CustomUser.MANAGEMENT, 'Demo', 'Principal')  # read-only: dashboard, Student 360, shortage
         staff_user = user('staff@%s.in' % schema, CustomUser.STAFF, 'Demo', 'Staff')
         staff = Staff.objects.get(admin=staff_user)
         if staff.department_id is None:

@@ -17,10 +17,10 @@ from django.urls import reverse
 
 from .models import CustomUser, Staff
 
-COLLEGE_ADMIN, STAFF, STUDENT = CustomUser.COLLEGE_ADMIN, CustomUser.STAFF, CustomUser.STUDENT
-ALL_ROLES = (COLLEGE_ADMIN, STAFF, STUDENT)
+COLLEGE_ADMIN, STAFF, STUDENT, MANAGEMENT = CustomUser.COLLEGE_ADMIN, CustomUser.STAFF, CustomUser.STUDENT, CustomUser.MANAGEMENT
+ALL_ROLES = (COLLEGE_ADMIN, STAFF, STUDENT, MANAGEMENT)
 
-_HOME = {COLLEGE_ADMIN: 'admin_home', STAFF: 'staff_home', STUDENT: 'student_home'}
+_HOME = {COLLEGE_ADMIN: 'admin_home', STAFF: 'staff_home', STUDENT: 'student_home', MANAGEMENT: 'principal_dashboard'}
 
 
 def home_url_for(user):
@@ -32,8 +32,9 @@ def home_url_for(user):
 def role_required(*roles, strict=False):
     """Allow only authenticated users whose role is in ``roles``.
 
-    A logged-in user with another role is sent to their own home page, or gets HTTP 403 when ``strict`` is set
-    (and always when their role has no home page yet).
+    A logged-in user with another role is sent to their own home page, or gets HTTP 403 when ``strict`` is set (and always
+    when their role has no home page yet, and always for the read-only Management role: a role that may only look gets a clear
+    "no" on any page that changes something, never a friendly redirect).
     """
     allowed = frozenset(roles)
 
@@ -45,7 +46,7 @@ def role_required(*roles, strict=False):
                 return redirect(reverse('login_page'))
             if user.user_type not in allowed:
                 home = home_url_for(user)
-                if strict or home is None:
+                if strict or home is None or user.user_type == MANAGEMENT:
                     raise PermissionDenied('Your role may not use this page.')
                 return redirect(home)
             return view(request, *args, **kwargs)

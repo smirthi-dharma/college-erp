@@ -6,13 +6,13 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET
 
 from academics.models import Batch, Programme, Section
-from main_app.access import COLLEGE_ADMIN, STAFF, STUDENT, role_required
+from main_app.access import COLLEGE_ADMIN, MANAGEMENT, STAFF, STUDENT, role_required
 from main_app.models import CustomUser, Student
 
 from . import services
 
 PAGE_SIZE = 50
-staff_or_admin = role_required(STAFF, COLLEGE_ADMIN, strict=True)
+staff_or_admin = role_required(STAFF, COLLEGE_ADMIN, MANAGEMENT, strict=True)  # Management: read-only, every view logged
 student_only = role_required(STUDENT, strict=True)
 
 
@@ -55,7 +55,7 @@ def student_list(request):
 
 # Any logged-in role may reach this view so that a refused attempt (a student, a head of department, a teacher on
 # someone else's student) is recorded before the 403. Anonymous users are sent to the login page as everywhere.
-any_role = role_required(COLLEGE_ADMIN, STAFF, STUDENT, CustomUser.HEAD_OF_DEPARTMENT, strict=True)
+any_role = role_required(COLLEGE_ADMIN, STAFF, STUDENT, MANAGEMENT, CustomUser.HEAD_OF_DEPARTMENT, strict=True)
 
 
 @any_role
@@ -64,11 +64,11 @@ def student_detail(request, pk):
     user = request.user
     student = Student.objects.filter(pk=pk).first()
     if student is None:
-        if user.user_type == COLLEGE_ADMIN:
+        if user.user_type in (COLLEGE_ADMIN, MANAGEMENT):
             raise Http404('No such student')
         services.log_refused_unknown(user, pk)  # same 403 as a real student: ids cannot be probed
         raise PermissionDenied('You may not open this student.')
-    if user.user_type not in (COLLEGE_ADMIN, STAFF):
+    if user.user_type not in (COLLEGE_ADMIN, STAFF, MANAGEMENT):
         services.log_access(user, student, services.StudentAccessLog.REFUSED)
         raise PermissionDenied('Your role may not use this page.')
     services.require_access(request.user, student)
